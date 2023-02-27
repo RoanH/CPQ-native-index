@@ -16,7 +16,7 @@
  *         took to construct the graph and second the time in nanoseconds
  *         it took to compute the canonical form of the graph.
  */
-JNIEXPORT jlongArray JNICALL Java_dev_roanh_cpqkeys_algo_Nauty_computeCanonSparse(JNIEnv* env, jclass obj, jobjectArray adj, jintArray colors){
+JNIEXPORT jlongArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNIEnv* env, jclass obj, jobjectArray adj, jintArray colors){
 	SG_DECL(graph);
 
 	constructSparseGraph(env, &adj, &graph);

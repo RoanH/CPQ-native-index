@@ -17,7 +17,7 @@ add_library(nauty SHARED
 	"./nauty/nautil.c"
 	"./nauty/naututil.c"
 	"./nauty/nauty.c"
-	"./nauty/schreier"
+	"./nauty/schreier.c"
 	"./core.c"
 	"./dev_roanh_cpqindex_Nauty.c"
 )
