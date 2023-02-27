@@ -45,7 +45,7 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, NULL);
 
 	//check for errors
-	if(stats->errstatus != 0){
+	if(stats.errstatus != 0){
 		return NULL;
 	}
 
