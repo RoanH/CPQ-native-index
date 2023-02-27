@@ -10,9 +10,9 @@ extern "C" {
 /*
  * Class:     dev_roanh_cpqindex_Nauty
  * Method:    computeCanonSparse
- * Signature: ([[I[I)[J
+ * Signature: ([[I[I)[I
  */
-JNIEXPORT jlongArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse
+JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse
   (JNIEnv *, jclass, jobjectArray, jintArray);
 
 #ifdef __cplusplus

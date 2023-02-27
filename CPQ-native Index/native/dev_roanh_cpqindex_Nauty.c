@@ -1,5 +1,6 @@
 #include <dev_roanh_cpqindex_Nauty.h>
 #include <core.h>
+#include <naututil.h>//TODO remove?
 
 /**
  * Computes the canonical form of the given colored graph using the sparse
@@ -16,7 +17,7 @@
  *         took to construct the graph and second the time in nanoseconds
  *         it took to compute the canonical form of the graph.
  */
-JNIEXPORT jlongArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNIEnv* env, jclass obj, jobjectArray adj, jintArray colors){
+JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNIEnv* env, jclass obj, jobjectArray adj, jintArray colors){
 	SG_DECL(graph);
 
 	constructSparseGraph(env, &adj, &graph);
@@ -27,7 +28,7 @@ JNIEXPORT jlongArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JN
 
 	static DEFAULTOPTIONS_SPARSEDIGRAPH(options);
 	statsblk stats;
-	options.getcanon = TRUE;
+	options.getcanon = TRUE;//TODO false
 	options.defaultptn = FALSE;
 
 	int n = graph.nv;
@@ -41,13 +42,19 @@ JNIEXPORT jlongArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JN
 	SG_DECL(canon);
 	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, &canon);
 
-	//return times
-	jlongArray result = (*env)->NewLongArray(env, 2);
+	//output
+	FILE* outf = fopen("test.txt", "w");
+	putcanon_sg(outf, labels, &canon, 0);
+	fclose(outf);
 
-	jlong data[2];
-	data[0] = 0;
-	data[1] = 0;
-	(*env)->SetLongArrayRegion(env, result, 0, 2, data);
+	//return canonical labeling
+	jintArray result = (*env)->NewIntArray(env, n);
+
+	jint data[n];
+	for(int i = 0; i < n; i++){
+		data[i] = labels[i];
+	}
+	(*env)->SetIntArrayRegion(env, result, 0, n, data);
 
 	return result;
 }
