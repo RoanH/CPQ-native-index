@@ -10,13 +10,6 @@ if(NOT JNI_FOUND)
 	message(FATAL_ERROR "Could not determine Java include path. Please set your JAVA_HOME environment variable to the location of the desired JDK.")
 endif()
 
-#	"./src/nautil.c"
-#	"./src/naugraph.c"
-#	"./src/naurng.c"
-#	"./src/naututil.c"
-#	"./src/nauty.c"
-#	"./src/schreier.c"
-#	"./src/nautinv.c"
 add_library(nauty SHARED
 	"./nauty/naugraph.c"
 	"./nauty/naurng.c"
