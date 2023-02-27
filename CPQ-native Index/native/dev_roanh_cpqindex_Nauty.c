@@ -1,10 +1,9 @@
 #include <dev_roanh_cpqindex_Nauty.h>
 #include <core.h>
-#include <naututil.h>//TODO remove?
 
 /**
- * Computes the canonical form of the given colored graph using the sparse
- * version of nauty. Returns the time in nanoseconds required for computations.
+ * Computes and returns the canonical form of the given colored graph using
+ * the sparse version of nauty.
  * @param The JNI environment.
  * @param Calling class.
  * @param adj The input graph in adjacency list format, n arrays with
@@ -13,39 +12,42 @@
  *        indices in blocks of the same color with the start of a block of the same
  *        color being indicated by a negated value. All vertex indices are also always
  *        one higher than their actual index in the graph.
- * @return An array with two elements, first the time in nanoseconds it
- *         took to construct the graph and second the time in nanoseconds
- *         it took to compute the canonical form of the graph.
+ * @return The relabeling function that can be used to constructed the canonical graph.
+ *         The returned array has the same size as there were vertices in the graph. For
+ *         each index the former index of that vertex is indicated. For example if at index
+ *         0 the value 4 is stored, then this means that in the input graph vertex 0 was
+ *         labeled as vertex 4.
  */
 JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNIEnv* env, jclass obj, jobjectArray adj, jintArray colors){
+	//construct input graph
 	SG_DECL(graph);
-
 	constructSparseGraph(env, &adj, &graph);
 
+	//set nauty settings
+	static DEFAULTOPTIONS_SPARSEDIGRAPH(options);
+	statsblk stats;
+	options.getcanon = FALSE;//we only need the relabeling function
+	options.defaultptn = FALSE;
+
+	//allocated data structures
+	int n = graph.nv;
 	DYNALLSTAT(int, labels, labels_sz);
 	DYNALLSTAT(int, ptn, ptn_sz);
 	DYNALLSTAT(int, orbits, orbits_sz);
+	DYNALLOC1(int, labels, labels_sz, n, "jni canon sparse");
+	DYNALLOC1(int, ptn, ptn_sz, n, "jni canon sparse");
+	DYNALLOC1(int, orbits, orbits_sz, n, "jni canon sparse");
 
-	static DEFAULTOPTIONS_SPARSEDIGRAPH(options);
-	statsblk stats;
-	options.getcanon = TRUE;//TODO false
-	options.defaultptn = FALSE;
-
-	int n = graph.nv;
-	DYNALLOC1(int, labels, labels_sz, n, "malloc");
-	DYNALLOC1(int, ptn, ptn_sz, n, "malloc");
-	DYNALLOC1(int, orbits, orbits_sz, n, "malloc");
-
+	//initialise the coloring of the graph
 	parseColoring(env, n, &colors, labels, ptn);
 
 	//compute canonical form and labeling
-	SG_DECL(canon);
-	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, &canon);
+	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, NULL);
 
-	//output
-	FILE* outf = fopen("test.txt", "w");
-	putcanon_sg(outf, labels, &canon, 0);
-	fclose(outf);
+	//check for errors
+	if(stats->errstatus != 0){
+		return NULL;
+	}
 
 	//return canonical labeling
 	jintArray result = (*env)->NewIntArray(env, n);
