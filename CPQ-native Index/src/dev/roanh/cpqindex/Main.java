@@ -31,7 +31,7 @@ public class Main{
 	 * @throws IOException When an IOException occurs.
 	 * @throws UnsatisfiedLinkError When loading a native library fails.
 	 */
-	private static final void loadNatives() throws IOException, UnsatisfiedLinkError{
+	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
 		for(Path lib : Files.newDirectoryStream(Paths.get("lib"), Files::isRegularFile)){
 			System.out.println("Loading native library: " + lib.getFileName());
 			System.load(lib.toAbsolutePath().toString());

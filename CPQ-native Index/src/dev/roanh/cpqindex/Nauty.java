@@ -23,10 +23,6 @@ public class Nauty{
 	
 	public static void runTest(){
 		CPQ q = CPQ.parse("((1 ◦ 2) ∩ (1 ◦ 3))"); 
-		
-		
-		
-		
 		ColoredGraph graph = toColoredGraph(Util.edgeLabelsToNodes(q.toQueryGraph().toUniqueGraph()));
 		int[] colors = prepareColors(graph);
 		
@@ -35,7 +31,12 @@ public class Nauty{
 			System.out.println(i + " -> " + Arrays.toString(graph.getAdjacencyList()[i]));
 		}
 		
-		
+		System.out.println("Colours: " + Arrays.toString(colors));
+		int c = 0;
+		for(List<Integer> group : graph.colorMap){
+			System.out.println(c + " -> " + group);
+			c++;
+		}
 		
 		int[] relabel = computeCanonSparse(graph.getAdjacencyList(), colors);
 		
@@ -68,7 +69,7 @@ public class Nauty{
 	
 	
 	
-	private static native int[] computeCanonSparse(int[][] adj, int[] colors);
+	protected static native int[] computeCanonSparse(int[][] adj, int[] colors);
 	
 	//TODO functions below could possibly be merged to simplify things
 	
