@@ -5,6 +5,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import dev.roanh.gmark.conjunct.cpq.CPQ;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
+import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.util.GraphPanel;
+import dev.roanh.gmark.util.UniqueGraph;
+
 public class Main{
 
 	
@@ -20,9 +27,23 @@ public class Main{
 		}
 		
 		
-		Nauty.runTest();
+		//Nauty.runTest();
 		
 		//TODO
+		
+		findRandomCore();
+	}
+	
+	public static void findRandomCore(){
+		while(true){
+			QueryGraphCPQ g = CPQ.generateRandomCPQ(10, 2).toQueryGraph();
+			UniqueGraph<Vertex, Predicate> core = g.computeCore();
+			if(core.getEdgeCount() != g.getEdgeCount()){
+				GraphPanel.show(g);
+				GraphPanel.show(core, g::getVertexLabel, Predicate::getAlias);
+				return;
+			}
+		}
 	}
 	
 	
