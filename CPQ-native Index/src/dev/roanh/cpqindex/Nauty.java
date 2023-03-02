@@ -31,6 +31,7 @@ public class Nauty{
 			System.out.println(i + " -> " + Arrays.toString(graph.getAdjacencyList()[i]));
 		}
 		
+		//TODO, ensure colours are in label ID ascending order
 		System.out.println("Colours: " + Arrays.toString(colors));
 		int c = 0;
 		for(List<Integer> group : graph.colorMap){
