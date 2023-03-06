@@ -6,8 +6,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
+import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.DataProxy;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphNode;
@@ -34,7 +37,7 @@ public class Nauty{
 		//TODO, ensure colours are in label ID ascending order
 		System.out.println("Colours: " + Arrays.toString(colors));
 		int c = 0;
-		for(List<Integer> group : graph.colorMap){
+		for(List<Integer> group : graph.getColorLists()){
 			System.out.println(c + " -> " + group);
 			c++;
 		}
@@ -53,7 +56,7 @@ public class Nauty{
 		System.out.println("Relabelled with: " + Arrays.toString(relabel));	
 		for(int i = 0; i < relabel.length; i++){
 			System.out.print(i + " -> ");
-			for(int v : graph.graph[relabel[i]]){
+			for(int v : graph.getAdjacencyList()[relabel[i]]){
 				System.out.print(inv[v]);//TODO probably need to sort each list
 				System.out.print(' ');
 			}
@@ -65,7 +68,10 @@ public class Nauty{
 		
 	}
 	
-	
+	public static int[] computeCanonicalLabelling(ColoredGraph graph){
+		int[] colors = prepareColors(graph);
+		return computeCanonSparse(graph.getAdjacencyList(), colors);
+	}
 	
 	
 	
@@ -86,7 +92,7 @@ public class Nauty{
 	protected static int[] prepareColors(ColoredGraph graph){
 		int[] colors = new int[graph.getNodeCount()];
 		int idx = 0;
-		for(List<Integer> group : graph.getColorMap()){
+		for(List<Integer> group : graph.getColorLists()){
 			for(int i = 0; i < group.size() - 1; i++){
 				colors[idx++] = group.get(i) + 1;
 			}
@@ -106,21 +112,26 @@ public class Nauty{
 	 * @return The constructed coloured graph.
 	 * @see ColoredGraph
 	 */
+	@SuppressWarnings("unchecked")
 	public static <V, E> ColoredGraph toColoredGraph(UniqueGraph<V, E> graph){
-		Map<Object, List<Integer>> colorMap = new HashMap<Object, List<Integer>>();
+		Map<Predicate, List<Integer>> colorMap = new HashMap<Predicate, List<Integer>>();
 		int[][] adj = graph.toAdjacencyList();
-		final Object nolabel = new Object();
+		List<Integer> nolabel = new ArrayList<Integer>();
 		
 		for(GraphNode<V, E> node : graph.getNodes()){
 			V data = node.getData();
 			if(data instanceof DataProxy){
-				colorMap.computeIfAbsent(((DataProxy<?>)data).getData(), k->new ArrayList<Integer>()).add(node.getID());
+				colorMap.computeIfAbsent(((DataProxy<Predicate>)data).getData(), k->new ArrayList<Integer>()).add(node.getID());
 			}else{
-				colorMap.computeIfAbsent(nolabel, k->new ArrayList<Integer>()).add(node.getID());
+				nolabel.add(node.getID());
 			}
 		}
 		
-		return new ColoredGraph(adj, colorMap.values());
+		return new ColoredGraph(
+			adj,
+			colorMap.entrySet().stream().sorted(Entry.comparingByKey()).collect(Collectors.toCollection(ArrayList::new)),
+			nolabel
+		);
 	}
 	
 	/**
@@ -133,11 +144,13 @@ public class Nauty{
 		 * The adjacency list representing the graph.
 		 */
 		private int[][] graph;
-		/**
-		 * A collection of lists where each list has the
-		 * IDs of nodes with the same colour.
-		 */
-		private Collection<List<Integer>> colorMap;
+//		/**
+//		 * A collection of lists where each list has the
+//		 * IDs of nodes with the same colour. Excludes the
+//		 * special collection of nodes without label.
+//		 */
+		private List<Entry<Predicate, List<Integer>>> labels;//sorted
+		private List<Integer> noLabel;
 		
 		/**
 		 * Constructs a new coloured graph with the given
@@ -145,9 +158,10 @@ public class Nauty{
 		 * @param adj The adjacency list of the graph.
 		 * @param colors The colour information.
 		 */
-		private ColoredGraph(int[][] adj, Collection<List<Integer>> colors){
+		private ColoredGraph(int[][] adj, List<Entry<Predicate, List<Integer>>> labels, List<Integer> nolabel){
 			graph = adj;
-			colorMap = colors;
+			this.labels = labels;
+			noLabel = nolabel;
 		}
 		
 		/**
@@ -158,14 +172,25 @@ public class Nauty{
 			return graph.length;
 		}
 		
-		/**
-		 * Gets the colour map for this coloured graph, each
-		 * list in the returned collection contains the IDs
-		 * of nodes with the same colour.
-		 * @return The colour map for this coloured graph.
-		 */
-		public Collection<List<Integer>> getColorMap(){
-			return colorMap;
+		public List<Integer> getNoLabels(){
+			return noLabel;
+		}
+		
+//		/**
+//		 * Gets the colour map for this coloured graph, each
+//		 * list in the returned collection contains the IDs
+//		 * of nodes with the same colour.
+//		 * @return The colour map for this coloured graph.
+//		 */
+		public List<Entry<Predicate, List<Integer>>> getLabels(){
+			return labels;
+		}
+		
+		public List<List<Integer>> getColorLists(){
+			List<List<Integer>> colors = new ArrayList<List<Integer>>(labels.size() + 1);
+			labels.forEach(e->colors.add(e.getValue()));
+			colors.add(noLabel);
+			return colors;
 		}
 		
 		/**
