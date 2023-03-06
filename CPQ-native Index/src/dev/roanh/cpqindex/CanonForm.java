@@ -136,7 +136,9 @@ public class CanonForm{
 				buf.append(v);
 				buf.append(',');
 			}
-			buf.deleteCharAt(buf.length() - 1);
+			if(graph[i].length != 0){
+				buf.deleteCharAt(buf.length() - 1);
+			}
 			buf.append("},");
 		}
 		buf.deleteCharAt(buf.length() - 1);
