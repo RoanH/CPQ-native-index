@@ -1,6 +1,5 @@
 package dev.roanh.cpqindex;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -17,7 +16,13 @@ import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.Util;
 
 public class CanonForm{
+	/**
+	 * Maximum number of bits that will ever be required to encode a vertex label ID.
+	 */
 	private static final int MAX_LABEL_BITS = 5;
+	/**
+	 * Maximum number of bits that will ever be required to encode a vertex ID.
+	 */
 	private static final int MAX_VERTEX_BITS = 10;
 	private int source;
 	private int target;
@@ -25,89 +30,67 @@ public class CanonForm{
 	private Map<Predicate, int[]> labels = new LinkedHashMap<Predicate, int[]>();
 	private int[][] graph;
 	
-	
 	public CanonForm(CPQ cpq){
 		this(cpq.toQueryGraph());
 	}
 	
-	
-	public static void main(String[] args) throws UnsatisfiedLinkError, IOException{
-		Main.loadNatives();
-		CanonForm cf = new CanonForm(CPQ.parse("((1 ◦ 2) ∩ (1 ◦ 3))").toQueryGraph());
-		System.out.println(cf.toStringCanon());
-		System.out.println(Arrays.toString(cf.toBinaryCanon()));
-		System.out.println(cf.toBase64());
-	}
-	
 	public CanonForm(QueryGraphCPQ graph){
-		UniqueGraph<Vertex, Predicate> core = graph.computeCore();
-		canonise(Util.edgeLabelsToNodes(core), graph.getSourceVertex(), graph.getTargetVertex());
-	}//TODO this constructor abuse is horrible
-	
-	
-	private final CanonForm canonise(UniqueGraph<Object, Void> core, Vertex src, Vertex trg){
+		this(Util.edgeLabelsToNodes(graph.computeCore()), graph.getSourceVertex(), graph.getTargetVertex());
+	}
+
+	private CanonForm(UniqueGraph<Object, Void> core, Vertex src, Vertex trg){
+		//compute a coloured graph
 		ColoredGraph input = Nauty.toColoredGraph(core);
 		
+		//compute the canonical labelling with nauty
 		int[] relabel = Nauty.computeCanonicalLabelling(input);
-		
-		System.out.println("Mapping");
+
+		//compute the inverse of the relabelling function.
 		int[] inv = new int[relabel.length];
  		for(int i = 0; i < relabel.length; i++){
-			System.out.println(i + " -> " + relabel[i]);
 			inv[relabel[i]] = i;
 		}
  		
+ 		//relabel the source and target node
  		source = inv[core.getNode(src).getID()];
  		target = inv[core.getNode(trg).getID()];
  		
+ 		//relabel nodes without label
  		nolabel = new int[input.getNoLabels().size()];
  		for(int i = 0; i < nolabel.length; i++){
  			nolabel[i] = inv[input.getNoLabels().get(i)];
  		}
  		Arrays.sort(nolabel);
  		
+ 		//relabel labels
  		for(Entry<Predicate, List<Integer>> pair : input.getLabels()){
- 			int[] row = new int[pair.getValue().size()];
- 			int i = 0;
- 			for(int id : pair.getValue()){
- 				row[i++] = inv[id];
+ 			List<Integer> old = pair.getValue();
+ 			int[] row = new int[old.size()];
+ 			for(int i = 0; i < old.size(); i++){
+ 				row[i] = inv[old.get(i)];
  			}
  			Arrays.sort(row);
  			labels.put(pair.getKey(), row);
- 			System.out.println(pair.getKey());
  		}
  		
- 		System.out.println("Relabelled with: " + Arrays.toString(relabel));	
+ 		//relabel the graph itself
  		graph = new int[relabel.length][];
 		for(int i = 0; i < relabel.length; i++){
-			System.out.print(i + " -> ");
 			int[] row = input.getAdjacencyList()[relabel[i]];
 			graph[i] = new int[row.length];
-			int j = 0;
-			for(int v : row){
-				graph[i][j++] = inv[v];
-				System.out.print(inv[v]);//TODO probably need to sort each list
-				System.out.print(' ');
+			for(int j = 0; j < row.length; j++){
+				graph[i][j] = inv[row[j]];
 			}
-			
 			Arrays.sort(graph[i]);
-			
-			System.out.println();
-			
-			
 		}
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		return this;
 	}
 	
+	/**
+	 * Computes the string variant of this canonical form. This representation
+	 * is human readable, but it is also larger than {@link #toBinaryCanon()}
+	 * or {@link #toBase64Canon()};
+	 * @return The string form of this canonical form.
+	 */
 	public String toStringCanon(){
 		StringBuilder buf = new StringBuilder();
 		buf.append("s=");
@@ -121,6 +104,7 @@ public class CanonForm{
 		}
 		buf.deleteCharAt(buf.length() - 1);
 		buf.append("},");
+		
 		for(Entry<Predicate, int[]> pair : labels.entrySet()){
 			buf.append('l');
 			buf.append(pair.getKey().getID());
@@ -132,6 +116,7 @@ public class CanonForm{
 			buf.deleteCharAt(buf.length() - 1);
 			buf.append("},");
 		}
+		
 		for(int i = 0; i < graph.length; i++){
 			buf.append('e');
 			buf.append(i);
@@ -146,12 +131,21 @@ public class CanonForm{
 			buf.append("},");
 		}
 		buf.deleteCharAt(buf.length() - 1);
+		
 		return buf.toString();
 	}
 	
+	/**
+	 * Computes the binary variant of this canonical form. This representation
+	 * is smaller than the string variant produced by {@link #toStringCanon()},
+	 * but can optionally be encoded in Base64 using {@link #toBase64Canon()}.
+	 * @return The binary form of this canonical form.
+	 */
 	public byte[] toBinaryCanon(){
+		//bits per vertex
 		int vb = (int)Math.ceil(Math.log(graph.length) / Math.log(2));
 		
+		//total required bits
 		int bits = MAX_VERTEX_BITS + vb * 3 + nolabel.length * vb + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS;
 		for(int[] lab : labels.values()){
 			bits += lab.length * vb + vb;
@@ -162,16 +156,17 @@ public class CanonForm{
 			bits += edges.length * vb;
 		}
 		
-		System.out.println("bits: " + bits);
-		
+		//write canonical form
 		BitWriter out = new BitWriter(bits);
 		out.writeInt(graph.length, MAX_VERTEX_BITS);
 		out.writeInt(source, vb);
 		out.writeInt(target, vb);
+		
 		out.writeInt(nolabel.length, vb);
 		for(int v : nolabel){
 			out.writeInt(v, vb);
 		}
+		
 		out.writeInt(labels.size(), MAX_LABEL_BITS);
 		for(Entry<Predicate, int[]> entry : labels.entrySet()){
 			out.writeInt(entry.getKey().getID(), MAX_LABEL_BITS);
@@ -180,6 +175,7 @@ public class CanonForm{
 				out.writeInt(v, vb);
 			}
 		}
+		
 		for(int[] edges : graph){
 			out.writeInt(edges.length, vb);
 			for(int v : edges){
@@ -187,11 +183,14 @@ public class CanonForm{
 			}
 		}
 		
-		System.out.println(out.toBinaryString());
 		return out.getData();
 	}
 	
-	public String toBase64(){
+	/**
+	 * Computes the Base64 encoded string of {@link #toBinaryCanon()}.
+	 * @return The Base64 encoded version of the binary canonical form.
+	 */
+	public String toBase64Canon(){
 		return Base64.getEncoder().encodeToString(toBinaryCanon());
 	}
 }
