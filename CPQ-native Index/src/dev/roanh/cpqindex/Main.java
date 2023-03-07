@@ -14,9 +14,6 @@ import dev.roanh.gmark.util.UniqueGraph;
 
 public class Main{
 
-	
-	
-	
 	public static void main(String[] args){
 		//initialise native bindings
 		try{
@@ -26,14 +23,12 @@ public class Main{
 			return;
 		}
 		
-		
-		//Nauty.runTest();
-		
 		//TODO
-		
-		findRandomCore();
 	}
 	
+	/**
+	 * Small testing subroutine to find random CPQ cores.
+	 */
 	public static void findRandomCore(){
 		while(true){
 			QueryGraphCPQ g = CPQ.generateRandomCPQ(10, 2).toQueryGraph();
@@ -45,7 +40,6 @@ public class Main{
 			}
 		}
 	}
-	
 	
 	/**
 	 * Loads the compiled JNI libraries required for nauty.
