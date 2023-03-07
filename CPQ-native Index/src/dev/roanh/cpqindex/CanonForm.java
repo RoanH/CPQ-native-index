@@ -2,6 +2,7 @@ package dev.roanh.cpqindex;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ public class CanonForm{
 		CanonForm cf = new CanonForm(CPQ.parse("((1 ◦ 2) ∩ (1 ◦ 3))").toQueryGraph());
 		System.out.println(cf.toStringCanon());
 		System.out.println(Arrays.toString(cf.toBinaryCanon()));
+		System.out.println(cf.toBase64());
 	}
 	
 	public CanonForm(QueryGraphCPQ graph){
@@ -187,5 +189,9 @@ public class CanonForm{
 		
 		System.out.println(out.toBinaryString());
 		return out.getData();
+	}
+	
+	public String toBase64(){
+		return Base64.getEncoder().encodeToString(toBinaryCanon());
 	}
 }
