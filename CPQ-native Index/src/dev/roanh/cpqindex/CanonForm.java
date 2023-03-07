@@ -34,6 +34,7 @@ public class CanonForm{
 		Main.loadNatives();
 		CanonForm cf = canonise(CPQ.parse("((1 ◦ 2) ∩ (1 ◦ 3))").toQueryGraph());
 		System.out.println(cf.toStringCanon());
+		System.out.println(Arrays.toString(cf.toBinaryCanon()));
 	}
 	
 	public static final CanonForm canonise(QueryGraphCPQ graph){
@@ -146,8 +147,41 @@ public class CanonForm{
 	}
 	
 	public byte[] toBinaryCanon(){
-		//TODO
+		int vb = (int)Math.ceil(Math.log(graph.length) / Math.log(2));
 		
-		return null;
+		int bits = MAX_VERTEX_BITS + vb * 3 + nolabel.length * vb + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS;
+		for(int[] lab : labels.values()){
+			bits += lab.length * vb;
+		}
+		
+		bits += graph.length * vb;
+		for(int[] edges : graph){
+			bits += edges.length * vb;
+		}
+		
+		BitWriter out = new BitWriter(bits);
+		out.writeInt(graph.length, MAX_VERTEX_BITS);
+		out.writeInt(source, vb);
+		out.writeInt(target, vb);
+		out.writeInt(nolabel.length, vb);
+		for(int v : nolabel){
+			out.writeInt(v, vb);
+		}
+		out.writeInt(labels.size(), MAX_LABEL_BITS);
+		for(Entry<Predicate, int[]> entry : labels.entrySet()){
+			out.writeInt(entry.getKey().getID(), MAX_LABEL_BITS);
+			for(int v : entry.getValue()){
+				out.writeInt(v, vb);
+			}
+		}
+		for(int[] edges : graph){
+			out.writeInt(edges.length, vb);
+			for(int v : edges){
+				out.writeInt(v, vb);
+			}
+		}
+		
+		System.out.println(out.toBinaryString());
+		return out.getData();
 	}
 }
