@@ -25,21 +25,21 @@ public class CanonForm{
 	private int[][] graph;
 	
 	
-	private CanonForm(){
-		
+	public CanonForm(CPQ cpq){
+		this(cpq.toQueryGraph());
 	}
 	
 	
 	public static void main(String[] args) throws UnsatisfiedLinkError, IOException{
 		Main.loadNatives();
-		CanonForm cf = canonise(CPQ.parse("((1 ◦ 2) ∩ (1 ◦ 3))").toQueryGraph());
+		CanonForm cf = new CanonForm(CPQ.parse("((1 ◦ 2) ∩ (1 ◦ 3))").toQueryGraph());
 		System.out.println(cf.toStringCanon());
 		System.out.println(Arrays.toString(cf.toBinaryCanon()));
 	}
 	
-	public static final CanonForm canonise(QueryGraphCPQ graph){
+	public CanonForm(QueryGraphCPQ graph){
 		UniqueGraph<Vertex, Predicate> core = graph.computeCore();
-		return new CanonForm().canonise(Util.edgeLabelsToNodes(core), graph.getSourceVertex(), graph.getTargetVertex());
+		canonise(Util.edgeLabelsToNodes(core), graph.getSourceVertex(), graph.getTargetVertex());
 	}//TODO this constructor abuse is horrible
 	
 	
@@ -72,6 +72,7 @@ public class CanonForm{
  			}
  			Arrays.sort(row);
  			labels.put(pair.getKey(), row);
+ 			System.out.println(pair.getKey());
  		}
  		
  		System.out.println("Relabelled with: " + Arrays.toString(relabel));	
@@ -151,13 +152,15 @@ public class CanonForm{
 		
 		int bits = MAX_VERTEX_BITS + vb * 3 + nolabel.length * vb + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS;
 		for(int[] lab : labels.values()){
-			bits += lab.length * vb;
+			bits += lab.length * vb + vb;
 		}
 		
 		bits += graph.length * vb;
 		for(int[] edges : graph){
 			bits += edges.length * vb;
 		}
+		
+		System.out.println("bits: " + bits);
 		
 		BitWriter out = new BitWriter(bits);
 		out.writeInt(graph.length, MAX_VERTEX_BITS);
@@ -170,6 +173,7 @@ public class CanonForm{
 		out.writeInt(labels.size(), MAX_LABEL_BITS);
 		for(Entry<Predicate, int[]> entry : labels.entrySet()){
 			out.writeInt(entry.getKey().getID(), MAX_LABEL_BITS);
+			out.writeInt(entry.getValue().length, vb);
 			for(int v : entry.getValue()){
 				out.writeInt(v, vb);
 			}
