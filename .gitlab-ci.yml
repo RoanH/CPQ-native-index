@@ -56,29 +56,40 @@ verify:
   stage: javadoc
   coverage: '/\([0-9]{2,3}\.[0-9]{2}%\)/'
 
-#javadoc:
-#  script:
-#    - mkdir ../javadoc
-#    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :javadoc
-#    - mv ./build/docs/javadoc/* ../javadoc/
-#  stage: javadoc
-#  artifacts:
-#    name: "${NAME} [Javadoc]"
-#    expire_in: 1 week
-#    paths:
-#      - javadoc/
+javadoc:
+  script:
+    - mkdir ../javadoc
+    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :javadoc
+    - mv ./build/docs/javadoc/* ../javadoc/
+  stage: javadoc
+  artifacts:
+    name: "${NAME} [Javadoc]"
+    expire_in: 1 week
+    paths:
+      - javadoc/
 
-#TODO compile natives (possibly via gradle)
-
-#compile:
-#  script:
-#    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} shadowJar
-#    - mv ./build/libs/* ../
-#  stage: compile
-#  artifacts:
-#    name: "${NAME}"
-#    expire_in: 1 week
-#    paths:
-#      - ${PROJECTNAME}-*.jar
+natives:
+  script:
+    - apt-get update && apt-get -y install gcc cmake
+    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} compileNatives
+  stage: compile
+  needs: ["natives"]
+  artifacts:
+    name: "Nauty Native Library"
+    expire_in: 1 week
+    paths:
+      - ${PROJECTNAME}/lib/*nauty.*
+      
+compile:
+  script:
+    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} shadowJar
+    - mv ./build/libs/* ../
+  stage: compile
+  needs: ["natives"]
+  artifacts:
+    name: "${NAME}"
+    expire_in: 1 week
+    paths:
+      - ${PROJECTNAME}-*.jar
 
 #TODO docker?

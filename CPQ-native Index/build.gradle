@@ -1,0 +1,47 @@
+plugins{
+	id 'java-library'
+	id 'eclipse'
+	id 'application'
+	id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+sourceSets{
+	main{
+		java{
+			srcDirs = ['src']
+		}
+		resources{
+			srcDirs = ['src', 'lib']
+		}
+	}
+}
+
+eclipse.classpath.downloadJavadoc = true
+compileJava.options.encoding = 'UTF-8'
+sourceCompatibility = 1.8
+
+javadoc{
+	options.memberLevel = JavadocMemberLevel.PRIVATE
+}
+
+repositories{
+	mavenCentral()
+}
+
+dependencies{
+	//implementation 'dev.roanh.gmark:gmark:1.2'
+	implementation files('lib/gMark.jar')
+}
+
+task compileNatives(type: Exec, group: "build", description: "Compile native libraries for the project.") {
+	workingDir "$projectDir/native"
+	if(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')){
+		commandLine 'cmd', '/c', 'build.bat'
+    }else{
+		commandLine 'sh', '-c', 'build.sh'
+	}
+}
+
+application{
+	mainClassName = 'dev.roanh.cpqindex.Main'
+}
