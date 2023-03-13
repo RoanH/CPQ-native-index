@@ -30,7 +30,7 @@ repositories{
 
 dependencies{
 	//implementation 'dev.roanh.gmark:gmark:1.2'
-	implementation files('lib/gMark.jar')
+	implementation files('lib/gmark.jar')
 }
 
 task compileNatives(type: Exec, group: "build", description: "Compile native libraries for the project.") {
