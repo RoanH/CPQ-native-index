@@ -71,7 +71,6 @@ javadoc:
 natives:
   script:
     - apt-get update && apt-get -y install gcc cmake
-    - chmod -R 777 ./native
     - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} compileNatives
   stage: compile
   artifacts:
