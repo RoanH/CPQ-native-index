@@ -1,0 +1,6 @@
+*.bat           text eol=crlf
+
+native/include/nauty/** linguist-vendored
+native/nauty/** linguist-vendored
+*.sh linguist-detectable
+*.bat linguist-detectable
