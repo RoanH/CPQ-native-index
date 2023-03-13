@@ -1,0 +1,84 @@
+image: openjdk:8
+
+variables:
+  NAME: "${CI_PROJECT_NAME}-${CI_PIPELINE_ID}-${CI_BUILD_REF_NAME}"
+  PROJECTNAME: "CPQ-native Index"
+
+before_script:
+  - java -version
+  - cd ${PROJECTNAME}
+  - ls -l
+
+stages:
+  - check
+  - compile
+  - status
+  - javadoc
+
+endings:
+  allow_failure: true
+  script: curl ${SERVER}ci/lf.sh | bash
+  stage: check
+
+#pending:
+#  allow_failure: true
+#  script: curl ${SERVER}ci/pending.sh | bash
+#  stage: compile
+
+#success:
+#  allow_failure: true
+#  script: curl ${SERVER}ci/success.sh | bash
+#  when: on_success
+#  stage: status
+
+#failure:
+#  allow_failure: true
+#  script: curl ${SERVER}ci/failure.sh | bash
+#  when: on_failure
+#  stage: status
+
+#spotbugs:
+#  allow_failure: true
+#  script:
+#    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :spotbugsMain
+#    - mv ./build/reports/spotbugs/main/spotbugs.html ../spotbugs.html
+#  stage: check
+#  artifacts:
+#    name: "SpotBugs Report"
+#    expire_in: 1 week
+#    when: always
+#    paths:
+#      - spotbugs.html
+
+verify:
+  allow_failure: true
+  script: curl ${SERVER}ci/javadoc.sh | bash
+  stage: javadoc
+  coverage: '/\([0-9]{2,3}\.[0-9]{2}%\)/'
+
+#javadoc:
+#  script:
+#    - mkdir ../javadoc
+#    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :javadoc
+#    - mv ./build/docs/javadoc/* ../javadoc/
+#  stage: javadoc
+#  artifacts:
+#    name: "${NAME} [Javadoc]"
+#    expire_in: 1 week
+#    paths:
+#      - javadoc/
+
+#TODO compile natives (possibly via gradle)
+
+#compile:
+#  script:
+#    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} shadowJar
+#    - mv ./build/libs/* ../
+#  stage: compile
+#  artifacts:
+#    name: "${NAME}"
+#    expire_in: 1 week
+#    paths:
+#      - ${PROJECTNAME}-*.jar
+
+#TODO docker?

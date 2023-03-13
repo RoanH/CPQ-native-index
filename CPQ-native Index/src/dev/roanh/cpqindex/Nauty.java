@@ -119,6 +119,10 @@ public class Nauty{
 			return graph.length;
 		}
 		
+		/**
+		 * Gets the IDs of nodes without a label/colour.
+		 * @return The IDs of nodes without a label/colour.
+		 */
 		public List<Integer> getNoLabels(){
 			return noLabel;
 		}
