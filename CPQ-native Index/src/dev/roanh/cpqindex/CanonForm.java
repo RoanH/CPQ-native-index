@@ -15,6 +15,11 @@ import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.Util;
 
+/**
+ * Utility class to compute and represent the canonical form of a CPQ.
+ * @author Roan
+ * @see Nauty
+ */
 public class CanonForm{
 	/**
 	 * Maximum number of bits that will ever be required to encode a vertex label ID.
@@ -24,20 +29,53 @@ public class CanonForm{
 	 * Maximum number of bits that will ever be required to encode a vertex ID.
 	 */
 	private static final int MAX_VERTEX_BITS = 10;
+	/**
+	 * The vertex ID of the source vertex of the CPQ.
+	 */
 	private int source;
+	/**
+	 * The vertex ID of the target vertex of the CPQ.
+	 */
 	private int target;
+	/**
+	 * A list of vertex IDs of vertices that have no labels.
+	 */
 	private int[] nolabel;
+	/**
+	 * A map containing the IDs of vertices with a specific label.
+	 */
 	private Map<Predicate, int[]> labels = new LinkedHashMap<Predicate, int[]>();
+	/**
+	 * The adjacency list form of the canonically labelled transformed CPQ query graph.
+	 */
 	private int[][] graph;
 	
+	/**
+	 * Constructs a canonical form for the given CPQ.
+	 * @param cpq The CPQ to compute a canonical form for.
+	 */
 	public CanonForm(CPQ cpq){
 		this(cpq.toQueryGraph());
 	}
 	
+	/**
+	 * Constructs a canonical form for the given CPQ query graph. For this the
+	 * core of the provided query graph is used and edge labels are converted to vertices.
+	 * @param graph The CPQ query graph to compute a canonical form for.
+	 * @see QueryGraphCPQ#computeCore()
+	 * @see Util#edgeLabelsToNodes(UniqueGraph)
+	 */
 	public CanonForm(QueryGraphCPQ graph){
 		this(Util.edgeLabelsToNodes(graph.computeCore()), graph.getSourceVertex(), graph.getTargetVertex());
 	}
 
+	/**
+	 * Constructs a canonical form for the given transformed CPQ query graph core
+	 * with the given source and target vertices.
+	 * @param core The CPQ query graph core
+	 * @param src The source vertex of the query graph.
+	 * @param trg The target vertex of the query graph.
+	 */
 	private CanonForm(UniqueGraph<Object, Void> core, Vertex src, Vertex trg){
 		//compute a coloured graph
 		ColoredGraph input = Nauty.toColoredGraph(core);
