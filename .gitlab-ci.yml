@@ -58,6 +58,9 @@ verify:
 
 javadoc:
   script:
+    - cd lib
+    - wget http://192.168.2.24:100/lib/gmark.jar
+    - cd ..
     - mkdir ../javadoc
     - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :javadoc
     - mv ./build/docs/javadoc/* ../javadoc/
@@ -81,6 +84,9 @@ natives:
       
 compile:
   script:
+    - cd lib
+    - wget http://192.168.2.24:100/lib/gmark.jar
+    - cd ..
     - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} shadowJar
     - mv ./build/libs/* ../
   stage: compile
