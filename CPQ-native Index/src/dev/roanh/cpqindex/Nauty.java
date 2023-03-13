@@ -12,13 +12,39 @@ import dev.roanh.gmark.util.DataProxy;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphNode;
 
+/**
+ * This class provides and interface to the native binding for nauty.
+ * @author Roan
+ *
+ */
 public class Nauty{
 	
+	/**
+	 * Computes a canonical labelling of the given coloured graph. The labelling
+	 * is returned as an array of integers showing how to relabel the vertices
+	 * in the graph. Each index of this array contains the ID of the vertex that
+	 * previously had the ID of that index in the array.
+	 * @param graph The graph to compute a canonical labelling of.
+	 * @return The computed relabelling mapping.
+	 */
 	public static int[] computeCanonicalLabelling(ColoredGraph graph){
 		int[] colors = prepareColors(graph);
 		return computeCanonSparse(graph.getAdjacencyList(), colors);
 	}
 	
+	/**
+	 * Performs a canonical labelling of the given input graph.
+	 * @param adj The input graph in adjacency list format, <code>n</code>
+	 *        arrays with each the indices of the neighbours of the <code>
+	 *        n</code>-th vertex.
+	 * @param colors The array containing raw color information data. Contains vertex
+	 *        indices in blocks of the same color with the start of a block of the same
+	 *        color being indicated by a negated value. All vertex indices are also always
+	 *        one higher than their actual index in the graph.
+	 * @return A canonical relabelling of the graph returned as an array of integers showing
+	 *         how to relabel the vertices in the graph. Each index of this array contains
+	 *         the ID of the vertex that previously had the ID of that index in the array.
+	 */
 	protected static native int[] computeCanonSparse(int[][] adj, int[] colors);
 	
 	/**
@@ -127,10 +153,21 @@ public class Nauty{
 			return noLabel;
 		}
 		
+		/**
+		 * Gets a list of colour information in the form of a list of
+		 * entries where each entry has the colour label and IDs of
+		 * vertices with that colour.
+		 * @return Gets the IDs of the coloured vertices and labels.
+		 */
 		public List<Entry<Predicate, List<Integer>>> getLabels(){
 			return labels;
 		}
 		
+		/**
+		 * Gets the colour information of this graph as a list of
+		 * lists where each list has the IDs of vertices of the same colour.
+		 * @return The colour information as a list of lists.
+		 */
 		public List<List<Integer>> getColorLists(){
 			List<List<Integer>> colors = new ArrayList<List<Integer>>(labels.size() + 1);
 			labels.forEach(e->colors.add(e.getValue()));
