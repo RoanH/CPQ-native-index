@@ -73,7 +73,6 @@ natives:
     - apt-get update && apt-get -y install gcc cmake
     - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} compileNatives
   stage: compile
-  needs: ["natives"]
   artifacts:
     name: "Nauty Native Library"
     expire_in: 1 week
