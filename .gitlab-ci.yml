@@ -2,11 +2,11 @@ image: openjdk:8
 
 variables:
   NAME: "${CI_PROJECT_NAME}-${CI_PIPELINE_ID}-${CI_BUILD_REF_NAME}"
-  PROJECTNAME: "CPQ-native\ Index"
+  PROJECTNAME: "CPQ-native Index"
 
 before_script:
   - java -version
-  - cd ${PROJECTNAME}
+  - cd CPQ-native\ Index
   - ls -l
 
 stages:
