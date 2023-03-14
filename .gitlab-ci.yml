@@ -37,18 +37,21 @@ endings:
 #  when: on_failure
 #  stage: status
 
-#spotbugs:
-#  allow_failure: true
-#  script:
-#    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :spotbugsMain
-#    - mv ./build/reports/spotbugs/main/spotbugs.html ../spotbugs.html
-#  stage: check
-#  artifacts:
-#    name: "SpotBugs Report"
-#    expire_in: 1 week
-#    when: always
-#    paths:
-#      - spotbugs.html
+spotbugs:
+  allow_failure: true
+  script:
+    - cd lib
+    - wget http://192.168.2.24:100/lib/gmark.jar
+    - cd ..
+    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :spotbugsMain
+    - mv ./build/reports/spotbugs/main/spotbugs.html ../spotbugs.html
+  stage: check
+  artifacts:
+    name: "SpotBugs Report"
+    expire_in: 1 week
+    when: always
+    paths:
+      - spotbugs.html
 
 verify:
   allow_failure: true

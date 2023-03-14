@@ -3,6 +3,7 @@ plugins{
 	id 'eclipse'
 	id 'application'
 	id 'com.github.johnrengelman.shadow' version '7.1.2'
+	id 'com.github.spotbugs' version '5.0.13'
 }
 
 sourceSets{
@@ -12,6 +13,23 @@ sourceSets{
 		}
 		resources{
 			srcDirs = ['src', 'lib']
+		}
+	}
+}
+
+spotbugs{
+	showProgress = true
+	effort = 'max'
+	reportLevel = 'low'
+	excludeFilter = file("exclude.xml")
+}
+
+spotbugsMain{
+	reports{
+		html{
+			required = true
+			outputLocation = file("$buildDir/reports/spotbugs/main/spotbugs.html")
+			stylesheet = 'fancy-hist.xsl'
 		}
 	}
 }
