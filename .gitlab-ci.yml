@@ -40,6 +40,7 @@ endings:
 spotbugs:
   allow_failure: true
   script:
+    - mkdir lib
     - cd lib
     - wget http://192.168.2.24:100/lib/gmark.jar
     - cd ..
