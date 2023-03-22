@@ -5,17 +5,20 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
 import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.util.IDable;
 import dev.roanh.gmark.util.RangeList;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 
 public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move generics to the top class and make the rest inner classes
 	private RangeList<List<LabelledPath>> segments;
-	private int k;
+	private final int k;
+	private final int labelCount;
 	
 	
 	public static void main(String[] args){
@@ -36,11 +39,12 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		g.addUniqueEdge(2, 4, b);
 		g.addUniqueEdge(3, 4, b);
 		
-		new EquivalenceClass<Integer>(2).partition(g);
+		new EquivalenceClass<Integer>(2, 3).partition(g);
 	}
 	
-	public EquivalenceClass(int k){
+	public EquivalenceClass(int k, int labels){
 		this.k = k;
+		labelCount = labels;
 		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
 	}
 	
@@ -65,6 +69,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		pathMap.values().stream().sorted(this::sortOnePath).forEachOrdered(segOne::add);
 		
 		//assign block IDs
+		Map<V, List<LabelledPath>> pathsZero = new HashMap<V, List<LabelledPath>>();
 		LabelledPath prev = null;
 		int id = 1;
 		for(LabelledPath seg : segOne){
@@ -86,9 +91,9 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					seg.segId = id;
 				}
 			}
-			
+
 			prev = seg;
-			//order pushback?
+			pathsZero.computeIfAbsent(seg.pair.src, v->new ArrayList<LabelledPath>()).add(seg);
 		}
 		
 		
@@ -96,6 +101,38 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		System.out.println(pathMap);
 		
 		segOne.forEach(l->System.out.println(l.pair + " / " + l.labels + " / " + l.segId));
+		
+		System.out.println("================ k-path");
+		//=================================================================================
+		
+		pathMap.clear();
+		for(int i = 1; i < k; i++){
+			for(LabelledPath seg : segments.get(i - 1)){
+				for(LabelledPath end : pathsZero.get(seg.pair.trg)){
+					Pair key = new Pair(seg.pair.src, end.pair.trg);
+					
+					LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
+					
+					//TODO path.segvalue push
+					
+					
+					
+					
+				}
+				
+				
+				
+			}
+			
+			id = 1;
+			
+			//sort
+			
+			//assign ids
+			
+			
+			
+		}
 		
 		
 	}
@@ -140,7 +177,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	
 	private final class LabelledPath{
 		private final Pair pair;
-		private Set<Predicate> labels = new HashSet<Predicate>();
+		private Set<Integer> labels = new HashSet<Integer>();
 		
 		//id stuff
 		private int segId;
@@ -153,7 +190,15 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		}
 		
 		public void addLabel(Predicate label){
+			addLabel(label.isInverse() ? (label.getID() + labelCount) : label.getID());
+		}
+		
+		public void addLabel(int label){
 			labels.add(label);
+		}
+		
+		public void addLabel(int high, int low){
+			addLabel((1 + high) * labelCount * 2 + low);//TODO formula up for discussion I guess
 		}
 		
 		public boolean isLoop(){
