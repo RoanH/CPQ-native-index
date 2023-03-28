@@ -32,9 +32,9 @@ public class Main{
 		
 		try{
 			formatIndex(
-				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\0(10 i id)1\\loops_k4_l2h"),
-				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\0(10 i id)1\\loops_k4_h2p"),
-				4
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_l2h"),
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_h2p"),
+				8
 			);
 		}catch(IOException e){
 			// TODO Auto-generated catch block
@@ -82,7 +82,7 @@ public class Main{
 		
 		 //(1 + id) * 6 + original
 		
-		final int pad = 8;
+		final int pad = 9;
 		final int end = 3 + blocks.values().stream().mapToInt(List::size).max().getAsInt() / 2;
 		String[] out = new String[end + labels.values().stream().mapToInt(List::size).max().getAsInt()];
 		for(int i = 0; i < out.length; i++){

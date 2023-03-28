@@ -1,6 +1,7 @@
 package dev.roanh.cpqindex;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,7 +21,6 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	private final int k;
 	private final int labelCount;
 	
-	
 	public static void main(String[] args){
 		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
 		g.addUniqueNode(0);
@@ -39,7 +39,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		g.addUniqueEdge(2, 4, b);
 		g.addUniqueEdge(3, 4, b);
 		
-		new EquivalenceClass<Integer>(2, 3).partition(g);
+		new EquivalenceClass<Integer>(3, 3).partition(g);
 	}
 	
 	public EquivalenceClass(int k, int labels){
@@ -69,7 +69,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		pathMap.values().stream().sorted(this::sortOnePath).forEachOrdered(segOne::add);
 		
 		//assign block IDs
-		Map<V, List<LabelledPath>> pathsZero = new HashMap<V, List<LabelledPath>>();
+//		Map<V, List<LabelledPath>> pathsZero = new HashMap<V, List<LabelledPath>>();
 		LabelledPath prev = null;
 		int id = 1;
 		for(LabelledPath seg : segOne){
@@ -83,8 +83,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					}else{
 						//is labels and cyclic patterns (loop) are the same the same segment ID is assigned
 						seg.segId = id;
-						seg.bisimilar = true;
-						prev.bisimilar = true;
+//						seg.bisimilar = true;
+//						prev.bisimilar = true;
 					}
 				}else{
 					id++;
@@ -93,10 +93,11 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			}
 
 			prev = seg;
-			pathsZero.computeIfAbsent(seg.pair.src, v->new ArrayList<LabelledPath>()).add(seg);
+//			pathsZero.computeIfAbsent(seg.pair.src, v->new ArrayList<LabelledPath>()).add(seg);
 		}
 		
-		
+		int[] maxSegId = new int[k];
+		maxSegId[0] = id;
 		
 		System.out.println(pathMap);
 		
@@ -106,39 +107,180 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		//=================================================================================
 		
 		pathMap.clear();
+		
 		for(int i = 1; i < k; i++){
-			for(LabelledPath seg : segments.get(i - 1)){
-				for(LabelledPath end : pathsZero.get(seg.pair.trg)){
-					Pair key = new Pair(seg.pair.src, end.pair.trg);
-					
-					LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
-					
-					//TODO path.segvalue push
-					
+			System.out.println("----- " + (i + 1));
+			for(int k1 = i - 1; k1 >= 0; k1--){
+				int k2 = i - k1 - 1;
+				
+				System.out.println((k1 + 1) + " + " + (k2 + 1));
+				//all k's are one lower than their actual meaning
+				
+				
+				
+				for(LabelledPath seg : segments.get(k1)){
+					for(LabelledPath end : segments.get(k2)){
+						if(!seg.pair.trg.equals(end.pair.src)){
+							continue;
+						}
+						
+						Pair key = new Pair(seg.pair.src, end.pair.trg);
+						
+						LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
+						
+						path.addSegment(seg, end);
+//						path.segs.add(seg.segId * maxSegId[i - 1] + end.segId);
+//						path.bisimilar = (end.bisimilar || end.isLoop()) && (seg.bisimilar || seg.isLoop());
+						if(k2 == 0){//slight optimisation, since we only need one combination to find all paths
+							for(List<Predicate> labels : seg.labels){
+								for(List<Predicate> label : end.labels){
+									path.addLabel(labels, label);
+								}
+							}
+						}
+						
+//						System.out.println("join: " + seg.pair + " with " + end.pair);
+						
+					}
 					
 					
 					
 				}
 				
+				id = 1;
+				
+				//sort
+				
+				List<LabelledPath> segs = segments.get(i);
+				pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
+				
+				
+				
+				//assign ids
+				
+				
+				prev = null;
+				for(LabelledPath path : segs){
+					if(prev == null){
+						path.segId = id;
+						
+					}else{
+						if(path.segs.equals(prev.segs)){
+							if(!(prev.isLoop() ^ path.isLoop())){//both are a loop or both are not a loop
+								
+								path.segId = id;
+								
+							}else{
+								id++;
+								path.segId = id;
+							}
+							
+							
+							
+						}else{
+							
+							id++;
+							path.segId = id;
+							
+							
+						}
+						
+							
+						
+						
+					}
+					
+					
+					prev = path;
+				}
 				
 				
 			}
-			
-			id = 1;
-			
-			//sort
-			
-			//assign ids
-			
-			
-			
 		}
 		
 		
+		
+//		for(int i = 1; i < k; i++){
+//			for(LabelledPath seg : segments.get(i - 1)){
+//				for(LabelledPath end : pathsZero.get(seg.pair.trg)){
+//					Pair key = new Pair(seg.pair.src, end.pair.trg);
+//					
+//					LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
+//					
+//					path.addSegment(seg, end);
+////					path.segs.add(seg.segId * maxSegId[i - 1] + end.segId);
+////					path.bisimilar = (end.bisimilar || end.isLoop()) && (seg.bisimilar || seg.isLoop());
+//					for(List<Predicate> labels : seg.labels){
+//						for(List<Predicate> label : end.labels){
+//							path.addLabel(labels, label);
+//						}
+//					}
+//					
+////					System.out.println("join: " + seg.pair + " with " + end.pair);
+//					
+//				}
+//				
+//				
+//				
+//			}
+//			
+//			id = 1;
+//			
+//			//sort
+//			
+//			//assign ids
+//			
+//			
+//			
+//		}
+//		
+//		
 	}
 	
 	
 	
+	
+	
+//	inline bool cmpsegvaluepointer(const Segment *a, const Segment *b)
+//	{
+//	    if(a->possiblitilyofbisimilar&&!b->possiblitilyofbisimilar)return true;
+//	    else if(!a->possiblitilyofbisimilar&&b->possiblitilyofbisimilar)return false;
+//		else if(a->segvalue==b->segvalue){
+//	        if(a->segset.size() == b->segset.size()) {
+//	            for(int i=0;i<a->segset.size();i++){
+//	                if((a->segset)[i] != b->segset[i])return a->segset[i]<b->segset[i];
+//	            }
+//	            if (a->path.src == a->path.dst&& b->path.src == b->path.dst)return a->path.src <= b->path.src; //a and b loop
+//	            else if (a->path.src == a->path.dst)return true;                                               //a is a loop
+//	            else if (b->path.src == b->path.dst)return false;                                              //b is a loop
+//	            else if (a->path.src < b->path.src)return true;                                                //a.s < b.s
+//	            else if (a->path.src == b->path.src && a->path.dst <= b->path.dst)return true;                 //a.s == b.s and a.t <= b.t
+//	            return false;
+//	        }
+//	        return a->segset.size() < b->segset.size();
+//		}
+//	    return a->segvalue < b->segvalue;
+//	}
+	
+	private int sortPaths(LabelledPath a, LabelledPath b){
+		if(a.segs.equals(b.segs)){
+			if(a.isLoop() && b.isLoop()){
+				return a.hashCode() - b.hashCode();
+			}else if(a.isLoop()){
+				return 1;
+			}else if(b.isLoop()){
+				return -1;
+			}else if(a.pair.src.compareTo(b.pair.src) < 0){
+				return 1;
+			}else if(a.pair.src.equals(b.pair.src) && a.pair.trg.compareTo(b.pair.trg) < 0){
+				return 1;
+			}else{
+				return -1;
+			}
+		}else{
+			return a.segs.hashCode() - b.segs.hashCode();
+		}
+	}
 	
 	private int sortOnePath(LabelledPath a, LabelledPath b){
 		if(a.labels.equals(b.labels)){
@@ -175,30 +317,33 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	
 	
 	
-	private final class LabelledPath{
+	private final class LabelledPath{//TODO currently removed the optimisations that store seg/label sequences as integers
 		private final Pair pair;
-		private Set<Integer> labels = new HashSet<Integer>();
+		private Set<List<Predicate>> labels = new HashSet<List<Predicate>>();//label sequences for this path
 		
 		//id stuff
 		private int segId;
 		
-		@Deprecated
-		private boolean bisimilar = false;
+		private Set<List<LabelledPath>> segs = new HashSet<List<LabelledPath>>();//effectively a history of blocks that were combined to form this path
 		
 		private LabelledPath(Pair pair){
 			this.pair = pair;
 		}
 		
+		public void addSegment(LabelledPath first, LabelledPath last){
+			segs.add(Arrays.asList(first, last));
+		}
+		
 		public void addLabel(Predicate label){
-			addLabel(label.isInverse() ? (label.getID() + labelCount) : label.getID());
+			labels.add(Arrays.asList(label));
 		}
 		
-		public void addLabel(int label){
-			labels.add(label);
-		}
-		
-		public void addLabel(int high, int low){
-			addLabel((1 + high) * labelCount * 2 + low);//TODO formula up for discussion I guess
+		public void addLabel(List<Predicate> first, List<Predicate> last){
+			//addLabel((1 + first) * labelCount * 2 + last);//TODO formula up for discussion I guess
+			List<Predicate> path = new ArrayList<Predicate>(first.size() + last.size());
+			path.addAll(first);
+			path.addAll(last);
+			labels.add(path);
 		}
 		
 		public boolean isLoop(){
