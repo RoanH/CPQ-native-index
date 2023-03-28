@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.Set;
 
@@ -20,6 +21,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	private RangeList<List<LabelledPath>> segments;
 	private final int k;
 	private final int labelCount;
+	private List<Block> blocks = new ArrayList<Block>();
 	
 	public static void main(String[] args){
 		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
@@ -29,23 +31,75 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		g.addUniqueNode(3);
 		g.addUniqueNode(4);
 
-		Predicate a = new Predicate(0, "a");
-		Predicate b = new Predicate(1, "b");
-		Predicate c = new Predicate(2, "c");
+		Predicate a = new Predicate(0, "0");
+		Predicate b = new Predicate(1, "1");
+		Predicate c = new Predicate(2, "2");
 		
 		g.addUniqueEdge(0, 1, c);
-		g.addUniqueEdge(1, 2, a);
+		g.addUniqueEdge(1, 2, b);
 		g.addUniqueEdge(1, 3, a);
 		g.addUniqueEdge(2, 4, b);
-		g.addUniqueEdge(3, 4, b);
+		g.addUniqueEdge(3, 4, a);
 		
-		new EquivalenceClass<Integer>(3, 3).partition(g);
+		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3, 3);
+		eq.partition(g);
+		
+		eq.computeBlocks();
+		System.out.println("===== " + 3);
+		for(EquivalenceClass<Integer>.Block block : eq.blocks){
+			System.out.println(block);
+		}
 	}
 	
 	public EquivalenceClass(int k, int labels){
 		this.k = k;
 		labelCount = labels;
 		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
+	}
+	
+	public void computeBlocks(){
+		
+		for(int j = 0; j < k - 1; j++){
+			System.out.println("===== " + (j + 1));
+			List<LabelledPath> segs = segments.get(j);
+			int start = 0;
+			int lastId = segs.get(0).segId;
+			for(int i = 0; i < segs.size(); i++){
+//				System.out.println("p: " + segs.get(i));
+				if(segs.get(i).segId != lastId){
+					System.out.println(new Block(segs.subList(start, i)));
+					
+					lastId = segs.get(i).segId;
+					start = i;
+				}
+				
+				
+				
+			}
+			
+			System.out.println(new Block(segs.subList(start, segs.size())));
+			
+		}
+		
+		List<LabelledPath> segs = segments.get(k - 1);
+		int start = 0;
+		int lastId = segs.get(0).segId;
+		for(int i = 0; i < segs.size(); i++){
+//			System.out.println("p: " + segs.get(i));
+			if(segs.get(i).segId != lastId){
+				blocks.add(new Block(segs.subList(start, i)));
+				
+				lastId = segs.get(i).segId;
+				start = i;
+			}
+			
+			
+			
+		}
+		
+		blocks.add(new Block(segs.subList(start, segs.size())));
+
+		
 	}
 	
 	//partition according to k-path-bisimulation
@@ -139,7 +193,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 							}
 						}
 						
-//						System.out.println("join: " + seg.pair + " with " + end.pair);
+						System.out.println("join: " + seg.pair + " with " + end.pair + " for " + key);
 						
 					}
 					
@@ -147,14 +201,16 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					
 				}
 				
-				id = 1;
+//				id = 1;
 				
 				//sort
 				
 				List<LabelledPath> segs = segments.get(i);
 				pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
+				System.out.println("AFTER SORT");
+				segs.forEach(System.out::println);
 				
-				
+				pathMap.clear();
 				
 				//assign ids
 				
@@ -165,7 +221,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 						path.segId = id;
 						
 					}else{
-						if(path.segs.equals(prev.segs)){
+						if(path.equalSegments(prev)){
 							if(!(prev.isLoop() ^ path.isLoop())){//both are a loop or both are not a loop
 								
 								path.segId = id;
@@ -193,6 +249,9 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					
 					prev = path;
 				}
+				
+				System.out.println("AFTER ASSIGN");
+				segs.forEach(System.out::println);
 				
 				
 			}
@@ -263,7 +322,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 //	}
 	
 	private int sortPaths(LabelledPath a, LabelledPath b){
-		if(a.segs.equals(b.segs)){
+		if(a.equalSegments(b)){
 			if(a.isLoop() && b.isLoop()){
 				return a.hashCode() - b.hashCode();
 			}else if(a.isLoop()){
@@ -278,6 +337,11 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				return -1;
 			}
 		}else{
+//			if(b.pair.toString().endsWith("(2,2)") || a.pair.toString().endsWith("(2,2)")){
+//				System.out.println("false: " + b + " / " + a);
+//				System.out.println("b: " + b.segs);
+//				System.out.println("a: " + a.segs);
+//			}
 			return a.segs.hashCode() - b.segs.hashCode();
 		}
 	}
@@ -315,7 +379,42 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	
 	
 	
-	
+	private final class Block{
+		private final int id;
+		private List<Pair> paths;
+		private List<List<Predicate>> labels;
+		
+		//TODO cores
+		
+		private Block(List<LabelledPath> slice){
+			id = slice.get(0).segId;
+			labels = slice.get(0).labels.stream().collect(Collectors.toList());
+			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
+			//TODO cores
+			
+//			System.out.println("block from: " + slice.size());
+		}
+		
+		@Override
+		public String toString(){
+			StringBuilder builder = new StringBuilder();
+			builder.append("Block[id=");
+			builder.append(id);
+			builder.append(",paths=");
+			builder.append(paths);
+			builder.append(",labels={");
+			for(List<Predicate> seq : labels){
+				for(Predicate p : seq){
+//					builder.append(p.getAlias());
+					builder.append(p.isInverse() ? (p.getID() + labelCount) : p.getID());
+				}
+				builder.append(",");
+			}
+			builder.delete(builder.length() - 1, builder.length());
+			builder.append("}]");
+			return builder.toString();
+		}
+	}
 	
 	private final class LabelledPath{//TODO currently removed the optimisations that store seg/label sequences as integers
 		private final Pair pair;
@@ -328,6 +427,20 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		private LabelledPath(Pair pair){
 			this.pair = pair;
+		}
+		
+		public boolean equalSegments(LabelledPath other){
+			main: for(List<EquivalenceClass<V>.LabelledPath> seg : segs){
+				for(List<EquivalenceClass<V>.LabelledPath> test : other.segs){
+					if(seg.get(0).segId == test.get(0).segId && seg.get(1).segId == test.get(1).segId){
+						continue main;
+					}
+				}
+				
+				return false;
+			}
+			
+			return true;
 		}
 		
 		public void addSegment(LabelledPath first, LabelledPath last){
@@ -348,6 +461,33 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		public boolean isLoop(){
 			return pair.isLoop();
+		}
+		
+		@Override
+		public String toString(){
+			StringBuilder builder = new StringBuilder();
+			builder.append("LabelledPath[id=");
+			builder.append(segId);
+			builder.append(",path=");
+			builder.append(pair);
+			builder.append(",labels={");
+			for(List<Predicate> seq : labels){
+				for(Predicate p : seq){
+					builder.append(p.getAlias());
+				}
+				builder.append(",");
+			}
+			builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
+			for(List<EquivalenceClass<V>.LabelledPath> seq : segs){
+				for(EquivalenceClass<V>.LabelledPath p : seq){
+					builder.append(p.segId);
+				}
+				builder.append(",");
+			}
+			builder.delete(builder.length() - 1, builder.length());
+			builder.append("}]");
+			builder.append("}]");
+			return builder.toString();
 		}
 	}
 	
