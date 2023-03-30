@@ -32,8 +32,8 @@ public class Main{
 		
 		try{
 			formatIndex(
-				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_l2h"),
-				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_h2p"),
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\0(1 i id)\\selfloop_k2_l2h"),
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\0(1 i id)\\selfloop_k2_h2p"),
 				8
 			);
 		}catch(IOException e){

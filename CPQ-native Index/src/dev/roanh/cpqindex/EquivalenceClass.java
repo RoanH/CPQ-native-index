@@ -11,11 +11,13 @@ import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.Set;
 
+import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.IDable;
 import dev.roanh.gmark.util.RangeList;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
+import dev.roanh.gmark.util.Util;
 
 public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move generics to the top class and make the rest inner classes
 	private RangeList<List<LabelledPath>> segments;
@@ -99,6 +101,12 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		blocks.add(new Block(segs.subList(start, segs.size())));
 
+		Map<Pair, Block> blockMap = new HashMap<Pair, Block>();
+		
+		//TODO basically we want to merge blocks, but we need to keep the information to compute cores later intact, or do things in step with partitioning
+		
+		
+		
 		
 	}
 	
@@ -178,6 +186,11 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 							continue;
 						}
 						
+						//TODO remove, we need all combinations for cores
+//						if(k2 != 0){
+//							continue;
+//						}
+						
 						Pair key = new Pair(seg.pair.src, end.pair.trg);
 						
 						LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
@@ -210,7 +223,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				System.out.println("AFTER SORT");
 				segs.forEach(System.out::println);
 				
-				pathMap.clear();
+				
 				
 				//assign ids
 				
@@ -255,6 +268,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				
 				
 			}
+			
+			pathMap.clear();
 		}
 		
 		
@@ -383,6 +398,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		private final int id;
 		private List<Pair> paths;
 		private List<List<Predicate>> labels;
+		private List<CPQ> cores;
 		
 		//TODO cores
 		
@@ -393,6 +409,30 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			//TODO cores
 			
 //			System.out.println("block from: " + slice.size());
+			
+			computeCores(slice.get(0).segs);
+		}
+		
+		private void computeCores(Set<List<LabelledPath>> segs){
+			if(segs.isEmpty()){
+				cores = labels.stream().map(CPQ::labels).collect(Collectors.toCollection(ArrayList::new));
+			}else{
+				//TODO combine cores
+				cores = new ArrayList<CPQ>();
+			}
+			
+			Util.computeAllSubsets(cores, set->{
+				if(set.size() >= 2){
+					cores.add(CPQ.intersect(set));
+				}
+			});
+			
+			if(paths.get(0).isLoop()){//TODO does it suffice to only check one?
+				final int max = cores.size();
+				for(int i = 0; i < max; i++){
+					cores.add(CPQ.intersect(cores.get(i), CPQ.id()));
+				}
+			}
 		}
 		
 		@Override
@@ -408,6 +448,12 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 //					builder.append(p.getAlias());
 					builder.append(p.isInverse() ? (p.getID() + labelCount) : p.getID());
 				}
+				builder.append(",");
+			}
+			builder.delete(builder.length() - 1, builder.length());
+			builder.append("},cores={");
+			for(CPQ core : cores){
+				builder.append(core.toString());
 				builder.append(",");
 			}
 			builder.delete(builder.length() - 1, builder.length());
