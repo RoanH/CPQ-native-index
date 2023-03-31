@@ -64,10 +64,10 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		eq.partition(g);
 		eq.computeBlocks();
-		System.out.println("===== " + eq.k);
-		for(EquivalenceClass<Integer>.Block block : eq.blocks){
-			System.out.println(block);
-		}
+//		System.out.println("===== " + eq.k);
+//		for(EquivalenceClass<Integer>.Block block : eq.blocks){
+//			System.out.println(block);
+//		}
 	}
 	
 	public EquivalenceClass(int k, int labels){
@@ -78,7 +78,15 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	
 	public void computeBlocks(){
 		
-		for(int j = 0; j < k - 1; j++){
+		Map<Pair, Block> nextMap = new HashMap<Pair, Block>();
+		Map<Pair, Block> prevMap = null;
+		
+		for(int j = 0; j < k; j++){
+			prevMap = nextMap;
+			nextMap = new HashMap<Pair, Block>();
+			
+			blocks.clear();
+			
 			System.out.println("===== " + (j + 1));
 			List<LabelledPath> segs = segments.get(j);
 			int start = 0;
@@ -86,7 +94,27 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			for(int i = 0; i < segs.size(); i++){
 //				System.out.println("p: " + segs.get(i));
 				if(segs.get(i).segId != lastId){
-					System.out.println(new Block(segs.subList(start, i)));
+					List<LabelledPath> slice = segs.subList(start, i);
+					
+					List<Block> inherited = new ArrayList<Block>();
+					if(j > 0){
+						for(LabelledPath path : slice){
+							Block b = prevMap.get(path.pair);
+							if(b != null){
+								inherited.add(b);
+							}
+						}
+					}
+					
+					
+					Block block = new Block(slice, inherited);
+					blocks.add(block);
+					System.out.println(block);
+					
+					
+					for(Pair pair : block.paths){
+						nextMap.put(pair, block);
+					}
 					
 					lastId = segs.get(i).segId;
 					start = i;
@@ -96,29 +124,47 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				
 			}
 			
-			System.out.println(new Block(segs.subList(start, segs.size())));
+			List<LabelledPath> slice = segs.subList(start, segs.size());
 			
-		}
-		
-		List<LabelledPath> segs = segments.get(k - 1);
-		int start = 0;
-		int lastId = segs.get(0).segId;
-		for(int i = 0; i < segs.size(); i++){
-//			System.out.println("p: " + segs.get(i));
-			if(segs.get(i).segId != lastId){
-				blocks.add(new Block(segs.subList(start, i)));
-				
-				lastId = segs.get(i).segId;
-				start = i;
+			List<Block> inherited = new ArrayList<Block>();
+			if(j > 0){
+				for(LabelledPath path : slice){
+					Block b = prevMap.get(path.pair);
+					if(b != null){
+						inherited.add(b);
+					}
+				}
 			}
 			
+			Block block = new Block(slice, inherited);
+			blocks.add(block);
+			System.out.println(block);
 			
+			for(Pair pair : block.paths){
+				nextMap.put(pair, block);
+			}
 			
 		}
 		
-		blocks.add(new Block(segs.subList(start, segs.size())));
+//		List<LabelledPath> segs = segments.get(k - 1);
+//		int start = 0;
+//		int lastId = segs.get(0).segId;
+//		for(int i = 0; i < segs.size(); i++){
+////			System.out.println("p: " + segs.get(i));
+//			if(segs.get(i).segId != lastId){
+//				blocks.add(new Block(segs.subList(start, i)));
+//				
+//				lastId = segs.get(i).segId;
+//				start = i;
+//			}
+//			
+//			
+//			
+//		}
+//		
+//		blocks.add(new Block(segs.subList(start, segs.size())));
 
-		Map<Pair, Block> blockMap = new HashMap<Pair, Block>();
+//		Map<Pair, Block> blockMap = new HashMap<Pair, Block>();
 		
 		//TODO basically we want to merge blocks, but we need to keep the information to compute cores later intact, or do things in step with partitioning
 		
@@ -178,11 +224,11 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		int[] maxSegId = new int[k];
 		maxSegId[0] = id;
 		
-		System.out.println(pathMap);
+//		System.out.println(pathMap);
 		
-		segOne.forEach(l->System.out.println(l.pair + " / " + l.labels + " / " + l.segId));
+//		segOne.forEach(l->System.out.println(l.pair + " / " + l.labels + " / " + l.segId));
 		
-		System.out.println("================ k-path");
+//		System.out.println("================ k-path");
 		//=================================================================================
 		
 		pathMap.clear();
@@ -192,7 +238,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			for(int k1 = i - 1; k1 >= 0; k1--){
 				int k2 = i - k1 - 1;
 				
-				System.out.println((k1 + 1) + " + " + (k2 + 1));
+//				System.out.println((k1 + 1) + " + " + (k2 + 1));
 				//all k's are one lower than their actual meaning
 				
 				
@@ -223,7 +269,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 							}
 						}
 						
-						System.out.println("join: " + seg.pair + " with " + end.pair + " for " + key);
+//						System.out.println("join: " + seg.pair + " with " + end.pair + " for " + key);
 						
 					}
 					
@@ -237,8 +283,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				
 				List<LabelledPath> segs = segments.get(i);
 				pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
-				System.out.println("AFTER SORT");
-				segs.forEach(System.out::println);
+//				System.out.println("AFTER SORT");
+//				segs.forEach(System.out::println);
 				
 				
 				
@@ -280,8 +326,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					prev = path;
 				}
 				
-				System.out.println("AFTER ASSIGN");
-				segs.forEach(System.out::println);
+//				System.out.println("AFTER ASSIGN");
+//				segs.forEach(System.out::println);
 				
 				
 			}
@@ -420,19 +466,24 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		//TODO cores
 		
-		private Block(List<LabelledPath> slice){
+		private Block(List<LabelledPath> slice, List<Block> inherited){
 			id = slice.get(0).segId;
 			labels = slice.get(0).labels.stream().collect(Collectors.toList());
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
 			slice.forEach(s->s.block = this);
 			//TODO cores
 			
+			//if any of the segments was
+			for(Block block : inherited){
+				labels.addAll(block.labels);
+			}
+			
 //			System.out.println("block from: " + slice.size());
 			
-			computeCores(slice.get(0).segs);
+			computeCores(slice.get(0).segs, inherited);
 		}
 		
-		private void computeCores(Set<List<LabelledPath>> segs){
+		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
 			if(segs.isEmpty()){
 				labels.stream().map(CPQ::labels).forEach(q->{
 					String canon = new CanonForm(q).toBase64Canon();
@@ -442,10 +493,19 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				});
 			}else{
 				
+				for(Block block : inherited){//TODO technically we have a number of uniqueness guarantees here (unique within a block)
+					for(CPQ q : block.cores){
+						String canon = new CanonForm(q).toBase64Canon();
+						if(canonCores.add(canon)){
+							cores.add(q);
+						}
+					}
+				}
+				
 				//TODO inherited cores are still a thing
 				
 				for(List<LabelledPath> pair : segs){
-					System.out.println("concat: " + pair.get(0).block.cores.size() + " | " + pair.get(1).block.cores.size() + " paths: " + pair.get(0).pair + " | " + pair.get(1).pair);
+//					System.out.println("concat: " + pair.get(0).block.cores.size() + " | " + pair.get(1).block.cores.size() + " paths: " + pair.get(0).pair + " | " + pair.get(1).pair);
 					for(CPQ core1 : pair.get(0).block.cores){
 						for(CPQ core2 : pair.get(1).block.cores){
 							CPQ q = CPQ.concat(core1, core2);
@@ -458,8 +518,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				}
 			}
 			
-			System.out.println("init set for " + paths + " | " + labels.size());
-			cores.forEach(System.out::println);
+//			System.out.println("init set for " + paths + " | " + labels.size());
+//			cores.forEach(System.out::println);
 			
 			Util.computeAllSubsets(cores, set->{
 //				System.out.println("add: " + set);
