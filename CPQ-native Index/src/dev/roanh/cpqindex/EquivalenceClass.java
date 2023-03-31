@@ -38,36 +38,36 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		Predicate b = new Predicate(1, "1");
 		Predicate c = new Predicate(2, "2");
 		
-//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-//		g.addUniqueNode(0);
-//		g.addUniqueNode(1);
-//		g.addUniqueNode(2);
-//		g.addUniqueNode(3);
-//		g.addUniqueNode(4);
-//
-//		g.addUniqueEdge(0, 1, c);
-//		g.addUniqueEdge(1, 2, b);
-//		g.addUniqueEdge(1, 3, a);
-//		g.addUniqueEdge(2, 4, b);
-//		g.addUniqueEdge(3, 4, a);
-//		
-//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3, 3);
-		
 		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
 		g.addUniqueNode(0);
 		g.addUniqueNode(1);
+		g.addUniqueNode(2);
+		g.addUniqueNode(3);
+		g.addUniqueNode(4);
 
-		g.addUniqueEdge(0, 1, a);
-		g.addUniqueEdge(1, 1, b);
+		g.addUniqueEdge(0, 1, c);
+		g.addUniqueEdge(1, 2, b);
+		g.addUniqueEdge(1, 3, a);
+		g.addUniqueEdge(2, 4, b);
+		g.addUniqueEdge(3, 4, a);
 		
-		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2, 2);
+		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3, 3);
+		
+//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+//		g.addUniqueNode(0);
+//		g.addUniqueNode(1);
+//
+//		g.addUniqueEdge(0, 1, a);
+//		g.addUniqueEdge(1, 1, b);
+//		
+//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2, 2);
 		
 		eq.partition(g);
 		eq.computeBlocks();
-//		System.out.println("===== " + eq.k);
-//		for(EquivalenceClass<Integer>.Block block : eq.blocks){
-//			System.out.println(block);
-//		}
+		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
+		for(EquivalenceClass<Integer>.Block block : eq.blocks){
+			System.out.println(block);
+		}
 	}
 	
 	public EquivalenceClass(int k, int labels){
@@ -99,7 +99,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					List<Block> inherited = new ArrayList<Block>();
 					if(j > 0){
 						for(LabelledPath path : slice){
-							Block b = prevMap.get(path.pair);
+							Block b = prevMap.remove(path.pair);
 							if(b != null){
 								inherited.add(b);
 							}
@@ -129,7 +129,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			List<Block> inherited = new ArrayList<Block>();
 			if(j > 0){
 				for(LabelledPath path : slice){
-					Block b = prevMap.get(path.pair);
+					Block b = prevMap.remove(path.pair);
 					if(b != null){
 						inherited.add(b);
 					}
@@ -144,7 +144,14 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				nextMap.put(pair, block);
 			}
 			
+			
+			
 		}
+		
+		//any remaining pairs denote unused blocks
+		
+		System.out.println("remain: " + prevMap.keySet());
+		prevMap.values().stream().distinct().forEach(blocks::add);
 		
 //		List<LabelledPath> segs = segments.get(k - 1);
 //		int start = 0;
@@ -234,6 +241,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		pathMap.clear();
 		
 		for(int i = 1; i < k; i++){
+			id++;
 			System.out.println("----- " + (i + 1));
 			for(int k1 = i - 1; k1 >= 0; k1--){
 				int k2 = i - k1 - 1;
@@ -480,7 +488,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			
 //			System.out.println("block from: " + slice.size());
 			
-			computeCores(slice.get(0).segs, inherited);
+			//TODO computeCores(slice.get(0).segs, inherited);
 		}
 		
 		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
