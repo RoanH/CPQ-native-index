@@ -1,5 +1,6 @@
 package dev.roanh.cpqindex;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,28 +27,44 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	private List<Block> blocks = new ArrayList<Block>();
 	
 	public static void main(String[] args){
-		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-		g.addUniqueNode(0);
-		g.addUniqueNode(1);
-		g.addUniqueNode(2);
-		g.addUniqueNode(3);
-		g.addUniqueNode(4);
-
+		try{
+			Main.loadNatives();
+		}catch(UnsatisfiedLinkError | IOException e){
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		Predicate a = new Predicate(0, "0");
 		Predicate b = new Predicate(1, "1");
 		Predicate c = new Predicate(2, "2");
 		
-		g.addUniqueEdge(0, 1, c);
-		g.addUniqueEdge(1, 2, b);
-		g.addUniqueEdge(1, 3, a);
-		g.addUniqueEdge(2, 4, b);
-		g.addUniqueEdge(3, 4, a);
+//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+//		g.addUniqueNode(0);
+//		g.addUniqueNode(1);
+//		g.addUniqueNode(2);
+//		g.addUniqueNode(3);
+//		g.addUniqueNode(4);
+//
+//		g.addUniqueEdge(0, 1, c);
+//		g.addUniqueEdge(1, 2, b);
+//		g.addUniqueEdge(1, 3, a);
+//		g.addUniqueEdge(2, 4, b);
+//		g.addUniqueEdge(3, 4, a);
+//		
+//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3, 3);
 		
-		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3, 3);
+		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+		g.addUniqueNode(0);
+		g.addUniqueNode(1);
+
+		g.addUniqueEdge(0, 1, a);
+		g.addUniqueEdge(1, 1, b);
+		
+		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2, 2);
+		
 		eq.partition(g);
-		
 		eq.computeBlocks();
-		System.out.println("===== " + 3);
+		System.out.println("===== " + eq.k);
 		for(EquivalenceClass<Integer>.Block block : eq.blocks){
 			System.out.println(block);
 		}
@@ -398,7 +415,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		private final int id;
 		private List<Pair> paths;
 		private List<List<Predicate>> labels;
-		private List<CPQ> cores;
+		private List<CPQ> cores = new ArrayList<CPQ>();
+		private Set<String> canonCores = new HashSet<String>();
 		
 		//TODO cores
 		
@@ -406,6 +424,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			id = slice.get(0).segId;
 			labels = slice.get(0).labels.stream().collect(Collectors.toList());
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
+			slice.forEach(s->s.block = this);
 			//TODO cores
 			
 //			System.out.println("block from: " + slice.size());
@@ -415,15 +434,41 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		private void computeCores(Set<List<LabelledPath>> segs){
 			if(segs.isEmpty()){
-				cores = labels.stream().map(CPQ::labels).collect(Collectors.toCollection(ArrayList::new));
+				labels.stream().map(CPQ::labels).forEach(q->{
+					String canon = new CanonForm(q).toBase64Canon();
+					if(canonCores.add(canon)){
+						cores.add(q);
+					}
+				});
 			}else{
-				//TODO combine cores
-				cores = new ArrayList<CPQ>();
+				
+				//TODO inherited cores are still a thing
+				
+				for(List<LabelledPath> pair : segs){
+					System.out.println("concat: " + pair.get(0).block.cores.size() + " | " + pair.get(1).block.cores.size() + " paths: " + pair.get(0).pair + " | " + pair.get(1).pair);
+					for(CPQ core1 : pair.get(0).block.cores){
+						for(CPQ core2 : pair.get(1).block.cores){
+							CPQ q = CPQ.concat(core1, core2);
+							String canon = new CanonForm(q).toBase64Canon();
+							if(canonCores.add(canon)){
+								cores.add(q);
+							}
+						}
+					}
+				}
 			}
 			
+			System.out.println("init set for " + paths + " | " + labels.size());
+			cores.forEach(System.out::println);
+			
 			Util.computeAllSubsets(cores, set->{
+//				System.out.println("add: " + set);
 				if(set.size() >= 2){
-					cores.add(CPQ.intersect(set));
+					CPQ q = CPQ.intersect(set);
+					String canon = new CanonForm(q).toBase64Canon();
+					if(canonCores.add(canon)){
+						cores.add(q);
+					}
 				}
 			});
 			
@@ -468,6 +513,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		
 		//id stuff
 		private int segId;
+		private Block block;
 		
 		private Set<List<LabelledPath>> segs = new HashSet<List<LabelledPath>>();//effectively a history of blocks that were combined to form this path
 		
