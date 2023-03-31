@@ -7,20 +7,18 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.Set;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.core.graph.Predicate;
-import dev.roanh.gmark.util.IDable;
 import dev.roanh.gmark.util.RangeList;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 import dev.roanh.gmark.util.Util;
 
-public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move generics to the top class and make the rest inner classes
+public class EquivalenceClass<V extends Comparable<V>>{
 	private RangeList<List<LabelledPath>> segments;
 	private final int k;
 	private final int labelCount;
@@ -62,7 +60,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 //		
 //		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2, 2);
 		
-		eq.partition(g);
+		eq.partition(g);//TODO improve API
 		eq.computeBlocks();
 		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
 		for(EquivalenceClass<Integer>.Block block : eq.blocks){
@@ -77,7 +75,6 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 	}
 	
 	public void computeBlocks(){
-		
 		Map<Pair, Block> nextMap = new HashMap<Pair, Block>();
 		Map<Pair, Block> prevMap = null;
 		
@@ -106,11 +103,9 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 						}
 					}
 					
-					
 					Block block = new Block(slice, inherited);
 					blocks.add(block);
 					System.out.println(block);
-					
 					
 					for(Pair pair : block.paths){
 						nextMap.put(pair, block);
@@ -119,9 +114,6 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 					lastId = segs.get(i).segId;
 					start = i;
 				}
-				
-				
-				
 			}
 			
 			List<LabelledPath> slice = segs.subList(start, segs.size());
@@ -143,45 +135,15 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			for(Pair pair : block.paths){
 				nextMap.put(pair, block);
 			}
-			
-			
-			
 		}
 		
 		//any remaining pairs denote unused blocks
-		
 		System.out.println("remain: " + prevMap.keySet());
 		prevMap.values().stream().distinct().forEach(blocks::add);
-		
-//		List<LabelledPath> segs = segments.get(k - 1);
-//		int start = 0;
-//		int lastId = segs.get(0).segId;
-//		for(int i = 0; i < segs.size(); i++){
-////			System.out.println("p: " + segs.get(i));
-//			if(segs.get(i).segId != lastId){
-//				blocks.add(new Block(segs.subList(start, i)));
-//				
-//				lastId = segs.get(i).segId;
-//				start = i;
-//			}
-//			
-//			
-//			
-//		}
-//		
-//		blocks.add(new Block(segs.subList(start, segs.size())));
-
-//		Map<Pair, Block> blockMap = new HashMap<Pair, Block>();
-		
-		//TODO basically we want to merge blocks, but we need to keep the information to compute cores later intact, or do things in step with partitioning
-		
-		
-		
-		
 	}
 	
 	//partition according to k-path-bisimulation
-	public void partition(UniqueGraph<V, Predicate> g) throws IllegalArgumentException{
+	private void partition(UniqueGraph<V, Predicate> g) throws IllegalArgumentException{
 		if(k <= 0){
 			throw new IllegalArgumentException("Invalid value of k for bisimulation, has to be 1 or greater.");
 		}
@@ -201,7 +163,6 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		pathMap.values().stream().sorted(this::sortOnePath).forEachOrdered(segOne::add);
 		
 		//assign block IDs
-//		Map<V, List<LabelledPath>> pathsZero = new HashMap<V, List<LabelledPath>>();
 		LabelledPath prev = null;
 		int id = 1;
 		for(LabelledPath seg : segOne){
@@ -213,10 +174,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 						id++;
 						seg.segId = id;
 					}else{
-						//is labels and cyclic patterns (loop) are the same the same segment ID is assigned
+						//if labels and cyclic patterns (loop) are the same the same segment ID is assigned
 						seg.segId = id;
-//						seg.bisimilar = true;
-//						prev.bisimilar = true;
 					}
 				}else{
 					id++;
@@ -225,11 +184,8 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			}
 
 			prev = seg;
-//			pathsZero.computeIfAbsent(seg.pair.src, v->new ArrayList<LabelledPath>()).add(seg);
 		}
 		
-		int[] maxSegId = new int[k];
-		maxSegId[0] = id;
 		
 //		System.out.println(pathMap);
 		
@@ -238,9 +194,10 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 //		System.out.println("================ k-path");
 		//=================================================================================
 		
-		pathMap.clear();
 		
 		for(int i = 1; i < k; i++){
+			pathMap.clear();
+
 			id++;
 			System.out.println("----- " + (i + 1));
 			for(int k1 = i - 1; k1 >= 0; k1--){
@@ -249,26 +206,16 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 //				System.out.println((k1 + 1) + " + " + (k2 + 1));
 				//all k's are one lower than their actual meaning
 				
-				
-				
 				for(LabelledPath seg : segments.get(k1)){
 					for(LabelledPath end : segments.get(k2)){
 						if(!seg.pair.trg.equals(end.pair.src)){
 							continue;
 						}
 						
-						//TODO remove, we need all combinations for cores
-//						if(k2 != 0){
-//							continue;
-//						}
-						
 						Pair key = new Pair(seg.pair.src, end.pair.trg);
-						
 						LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
 						
 						path.addSegment(seg, end);
-//						path.segs.add(seg.segId * maxSegId[i - 1] + end.segId);
-//						path.bisimilar = (end.bisimilar || end.isLoop()) && (seg.bisimilar || seg.isLoop());
 						if(k2 == 0){//slight optimisation, since we only need one combination to find all paths
 							for(List<Predicate> labels : seg.labels){
 								for(List<Predicate> label : end.labels){
@@ -276,138 +223,40 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 								}
 							}
 						}
-						
-//						System.out.println("join: " + seg.pair + " with " + end.pair + " for " + key);
-						
 					}
-					
-					
-					
 				}
-				
-//				id = 1;
-				
 			}
 
 			//sort
 
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
-			System.out.println("AFTER SORT");
-			segs.forEach(System.out::println);
-
-
+//			System.out.println("AFTER SORT");
+//			segs.forEach(System.out::println);
 
 			//assign ids
-
-
 			prev = null;
 			for(LabelledPath path : segs){
 				if(prev == null){
 					path.segId = id;
-
 				}else{
 					if(path.equalSegments(prev)){
-						if(!(prev.isLoop() ^ path.isLoop())){//both are a loop or both are not a loop
-
-							path.segId = id;
-
-						}else{
+						if(prev.isLoop() ^ path.isLoop()){
+							//increase id if loop status differs
 							id++;
-							path.segId = id;
 						}
-
-
-
 					}else{
-
+						//increase id if segments differ
 						id++;
-						path.segId = id;
-
-
 					}
-
-
-
-
+					
+					path.segId = id;
 				}
-
 
 				prev = path;
 			}
-
-//				System.out.println("AFTER ASSIGN");
-//				segs.forEach(System.out::println);
-
-
-
-
-			pathMap.clear();
 		}
-		
-		
-		
-//		for(int i = 1; i < k; i++){
-//			for(LabelledPath seg : segments.get(i - 1)){
-//				for(LabelledPath end : pathsZero.get(seg.pair.trg)){
-//					Pair key = new Pair(seg.pair.src, end.pair.trg);
-//					
-//					LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
-//					
-//					path.addSegment(seg, end);
-////					path.segs.add(seg.segId * maxSegId[i - 1] + end.segId);
-////					path.bisimilar = (end.bisimilar || end.isLoop()) && (seg.bisimilar || seg.isLoop());
-//					for(List<Predicate> labels : seg.labels){
-//						for(List<Predicate> label : end.labels){
-//							path.addLabel(labels, label);
-//						}
-//					}
-//					
-////					System.out.println("join: " + seg.pair + " with " + end.pair);
-//					
-//				}
-//				
-//				
-//				
-//			}
-//			
-//			id = 1;
-//			
-//			//sort
-//			
-//			//assign ids
-//			
-//			
-//			
-//		}
-//		
-//		
 	}
-	
-	
-	
-	
-	
-//	inline bool cmpsegvaluepointer(const Segment *a, const Segment *b)
-//	{
-//	    if(a->possiblitilyofbisimilar&&!b->possiblitilyofbisimilar)return true;
-//	    else if(!a->possiblitilyofbisimilar&&b->possiblitilyofbisimilar)return false;
-//		else if(a->segvalue==b->segvalue){
-//	        if(a->segset.size() == b->segset.size()) {
-//	            for(int i=0;i<a->segset.size();i++){
-//	                if((a->segset)[i] != b->segset[i])return a->segset[i]<b->segset[i];
-//	            }
-//	            if (a->path.src == a->path.dst&& b->path.src == b->path.dst)return a->path.src <= b->path.src; //a and b loop
-//	            else if (a->path.src == a->path.dst)return true;                                               //a is a loop
-//	            else if (b->path.src == b->path.dst)return false;                                              //b is a loop
-//	            else if (a->path.src < b->path.src)return true;                                                //a.s < b.s
-//	            else if (a->path.src == b->path.src && a->path.dst <= b->path.dst)return true;                 //a.s == b.s and a.t <= b.t
-//	            return false;
-//	        }
-//	        return a->segset.size() < b->segset.size();
-//		}
-//	    return a->segvalue < b->segvalue;
-//	}
 	
 	private int sortPaths(LabelledPath a, LabelledPath b){
 		if(a.equalSegments(b)){
@@ -425,11 +274,6 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				return -1;
 			}
 		}else{
-//			if(b.pair.toString().endsWith("(2,2)") || a.pair.toString().endsWith("(2,2)")){
-//				System.out.println("false: " + b + " / " + a);
-//				System.out.println("b: " + b.segs);
-//				System.out.println("a: " + a.segs);
-//			}
 			return a.segs.hashCode() - b.segs.hashCode();
 		}
 	}
@@ -452,21 +296,6 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		}
 	}
 	
-	
-//	inline bool cmpsegvaluepointer_0(const Segment *a, const Segment *b)
-//	{
-//	    if(a->segvalue==b->segvalue){
-//			if(a->path.src==a->path.dst)return true;
-//			else if(b->path.src==b->path.dst)return false;
-//	        else if(a->path.src<b->path.src)return true;
-//	        else if(a->path.src==b->path.src&&a->path.dst<b->path.dst)return true;
-//	        else return false;
-//		}
-//	    else return a->segvalue < b->segvalue;
-//	}
-	
-	
-	
 	private final class Block{
 		private final int id;
 		private List<Pair> paths;
@@ -474,14 +303,11 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 		private List<CPQ> cores = new ArrayList<CPQ>();
 		private Set<String> canonCores = new HashSet<String>();
 		
-		//TODO cores
-		
 		private Block(List<LabelledPath> slice, List<Block> inherited){
 			id = slice.get(0).segId;
 			labels = slice.get(0).labels.stream().collect(Collectors.toList());
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
 			slice.forEach(s->s.block = this);
-			//TODO cores
 			
 			//if any of the segments was
 			for(Block block : inherited){
@@ -490,7 +316,7 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 			
 //			System.out.println("block from: " + slice.size());
 			
-			//TODO computeCores(slice.get(0).segs, inherited);
+			//TODO computeCores(slice.get(0).segs, inherited);//just toggle this for now I guess
 		}
 		
 		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
