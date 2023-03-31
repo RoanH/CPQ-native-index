@@ -287,59 +287,61 @@ public class EquivalenceClass<V extends Comparable<V>>{//TODO possibly move gene
 				
 //				id = 1;
 				
-				//sort
-				
-				List<LabelledPath> segs = segments.get(i);
-				pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
-//				System.out.println("AFTER SORT");
-//				segs.forEach(System.out::println);
-				
-				
-				
-				//assign ids
-				
-				
-				prev = null;
-				for(LabelledPath path : segs){
-					if(prev == null){
-						path.segId = id;
-						
-					}else{
-						if(path.equalSegments(prev)){
-							if(!(prev.isLoop() ^ path.isLoop())){//both are a loop or both are not a loop
-								
-								path.segId = id;
-								
-							}else{
-								id++;
-								path.segId = id;
-							}
-							
-							
-							
+			}
+
+			//sort
+
+			List<LabelledPath> segs = segments.get(i);
+			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
+			System.out.println("AFTER SORT");
+			segs.forEach(System.out::println);
+
+
+
+			//assign ids
+
+
+			prev = null;
+			for(LabelledPath path : segs){
+				if(prev == null){
+					path.segId = id;
+
+				}else{
+					if(path.equalSegments(prev)){
+						if(!(prev.isLoop() ^ path.isLoop())){//both are a loop or both are not a loop
+
+							path.segId = id;
+
 						}else{
-							
 							id++;
 							path.segId = id;
-							
-							
 						}
-						
-							
-						
-						
+
+
+
+					}else{
+
+						id++;
+						path.segId = id;
+
+
 					}
-					
-					
-					prev = path;
+
+
+
+
 				}
-				
+
+
+				prev = path;
+			}
+
 //				System.out.println("AFTER ASSIGN");
 //				segs.forEach(System.out::println);
-				
-				
-			}
-			
+
+
+
+
 			pathMap.clear();
 		}
 		
