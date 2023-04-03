@@ -38,10 +38,6 @@ public class CanonForm{
 	 */
 	private int target;
 	/**
-	 * A list of vertex IDs of vertices that have no labels.
-	 */
-	private int[] nolabel;
-	/**
 	 * A map containing the IDs of vertices with a specific label.
 	 */
 	private Map<Predicate, int[]> labels = new LinkedHashMap<Predicate, int[]>();
@@ -93,13 +89,6 @@ public class CanonForm{
  		source = inv[core.getNode(src).getID()];
  		target = inv[core.getNode(trg).getID()];
  		
- 		//relabel nodes without label
- 		nolabel = new int[input.getNoLabels().size()];
- 		for(int i = 0; i < nolabel.length; i++){
- 			nolabel[i] = inv[input.getNoLabels().get(i)];
- 		}
- 		Arrays.sort(nolabel);
- 		
  		//relabel labels
  		for(Entry<Predicate, List<Integer>> pair : input.getLabels()){
  			List<Integer> old = pair.getValue();
@@ -135,13 +124,7 @@ public class CanonForm{
 		buf.append(source);
 		buf.append(",t=");
 		buf.append(target);
-		buf.append(",v={");
-		for(int i : nolabel){
-			buf.append(i);
-			buf.append(',');
-		}
-		buf.deleteCharAt(buf.length() - 1);
-		buf.append("},");
+		buf.append(',');
 		
 		for(Entry<Predicate, int[]> pair : labels.entrySet()){
 			buf.append('l');
@@ -184,7 +167,7 @@ public class CanonForm{
 		int vb = (int)Math.ceil(Math.log(graph.length) / Math.log(2));
 		
 		//total required bits
-		int bits = MAX_VERTEX_BITS + vb * 3 + nolabel.length * vb + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS;
+		int bits = MAX_VERTEX_BITS + vb * 3 + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS;
 		for(int[] lab : labels.values()){
 			bits += lab.length * vb + vb;
 		}
@@ -199,11 +182,6 @@ public class CanonForm{
 		out.writeInt(graph.length, MAX_VERTEX_BITS);
 		out.writeInt(source, vb);
 		out.writeInt(target, vb);
-		
-		out.writeInt(nolabel.length, vb);
-		for(int v : nolabel){
-			out.writeInt(v, vb);
-		}
 		
 		out.writeInt(labels.size(), MAX_LABEL_BITS);
 		for(Entry<Predicate, int[]> entry : labels.entrySet()){
