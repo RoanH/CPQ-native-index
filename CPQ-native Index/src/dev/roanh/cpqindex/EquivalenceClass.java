@@ -32,9 +32,10 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			e.printStackTrace();
 		}
 		
-		Predicate a = new Predicate(0, "0");
-		Predicate b = new Predicate(1, "1");
-		Predicate c = new Predicate(2, "2");
+		Predicate l0 = new Predicate(0, "0");
+		Predicate l1 = new Predicate(1, "1");
+		Predicate l2 = new Predicate(2, "2");
+		Predicate l3 = new Predicate(3, "3");
 		
 		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
 		g.addUniqueNode(0);
@@ -42,14 +43,38 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		g.addUniqueNode(2);
 		g.addUniqueNode(3);
 		g.addUniqueNode(4);
+		g.addUniqueNode(5);
+		g.addUniqueNode(6);
 
-		g.addUniqueEdge(0, 1, c);
-		g.addUniqueEdge(1, 2, b);
-		g.addUniqueEdge(1, 3, a);
-		g.addUniqueEdge(2, 4, b);
-		g.addUniqueEdge(3, 4, a);
+		g.addUniqueEdge(0, 1, l0);
+		g.addUniqueEdge(0, 2, l1);
+		g.addUniqueEdge(1, 3, l0);
+		g.addUniqueEdge(2, 3, l1);
+		g.addUniqueEdge(3, 4, l2);
+		g.addUniqueEdge(3, 5, l3);
+		g.addUniqueEdge(4, 6, l2);
+		g.addUniqueEdge(5, 6, l3);
 		
-		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3);
+		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(4);
+		
+//		Predicate a = new Predicate(0, "0");
+//		Predicate b = new Predicate(1, "1");
+//		Predicate c = new Predicate(2, "2");
+//		
+//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+//		g.addUniqueNode(0);
+//		g.addUniqueNode(1);
+//		g.addUniqueNode(2);
+//		g.addUniqueNode(3);
+//		g.addUniqueNode(4);
+//
+//		g.addUniqueEdge(0, 1, c);
+//		g.addUniqueEdge(1, 2, b);
+//		g.addUniqueEdge(1, 3, a);
+//		g.addUniqueEdge(2, 4, b);
+//		g.addUniqueEdge(3, 4, a);
+//		
+//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2);
 		
 //		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
 //		g.addUniqueNode(0);
@@ -63,9 +88,14 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		eq.partition(g);//TODO improve API
 		eq.computeBlocks();
 		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
-		for(EquivalenceClass<Integer>.Block block : eq.blocks){
-			System.out.println(block);
-		}
+		eq.blocks.stream().sorted((a, b)->{
+			int c = Integer.compare(a.paths.get(0).src, b.paths.get(0).src);
+			if(c == 0){
+				c = Integer.compare(a.paths.get(0).trg, b.paths.get(0).trg);
+			}
+			
+			return c;
+		}).forEach(System.out::println);
 	}
 	
 	public EquivalenceClass(int k){
@@ -74,17 +104,16 @@ public class EquivalenceClass<V extends Comparable<V>>{
 	}
 	
 	public void computeBlocks(){
-		Map<Pair, Block> nextMap = new HashMap<Pair, Block>();
-		Map<Pair, Block> prevMap = null;
+		Map<Pair, Block> pairMap = new HashMap<Pair, Block>();
+//		Map<Pair, Block> prevMap = null;
 		
 		for(int j = 0; j < k; j++){
-			prevMap = nextMap;
-			nextMap = new HashMap<Pair, Block>();
+//			prevMap = nextMap;
+//			nextMap = new HashMap<Pair, Block>();
 			
-			blocks.clear();
-			
-			System.out.println("===== " + (j + 1));
 			List<LabelledPath> segs = segments.get(j);
+			System.out.println("===== " + (j + 1));
+
 			int start = 0;
 			int lastId = segs.get(0).segId;
 			for(int i = 0; i < segs.size(); i++){
@@ -95,7 +124,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 					List<Block> inherited = new ArrayList<Block>();
 					if(j > 0){
 						for(LabelledPath path : slice){
-							Block b = prevMap.remove(path.pair);
+							Block b = pairMap.remove(path.pair);
 							if(b != null){
 								inherited.add(b);
 							}
@@ -103,11 +132,14 @@ public class EquivalenceClass<V extends Comparable<V>>{
 					}
 					
 					Block block = new Block(slice, inherited);
-					blocks.add(block);
 					System.out.println(block);
 					
-					for(Pair pair : block.paths){
-						nextMap.put(pair, block);
+					if(j != k - 1){
+						for(Pair pair : block.paths){
+							pairMap.put(pair, block);
+						}
+					}else{
+						blocks.add(block);
 					}
 					
 					lastId = segs.get(i).segId;
@@ -120,7 +152,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			List<Block> inherited = new ArrayList<Block>();
 			if(j > 0){
 				for(LabelledPath path : slice){
-					Block b = prevMap.remove(path.pair);
+					Block b = pairMap.remove(path.pair);
 					if(b != null){
 						inherited.add(b);
 					}
@@ -128,17 +160,22 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			}
 			
 			Block block = new Block(slice, inherited);
-			blocks.add(block);
 			System.out.println(block);
 			
-			for(Pair pair : block.paths){
-				nextMap.put(pair, block);
+			if(j != k - 1){
+				for(Pair pair : block.paths){
+					pairMap.put(pair, block);
+				}
+			}else{
+				blocks.add(block);
 			}
+			
+			System.out.println("Block count: " + blocks.size());
 		}
 		
 		//any remaining pairs denote unused blocks
-		System.out.println("remain: " + prevMap.keySet());
-		prevMap.values().stream().distinct().forEach(blocks::add);
+		System.out.println("remain: " + pairMap.keySet());
+		pairMap.values().stream().distinct().forEach(blocks::add);
 	}
 	
 	//partition according to k-path-bisimulation
@@ -358,7 +395,8 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			builder.append(",labels={");
 			for(List<Predicate> seq : labels){
 				for(Predicate p : seq){
-					builder.append(p.getAlias());
+					builder.append(p.isInverse() ? (p.getID() + 4) : p.getID());//TODO
+//					builder.append(p.getAlias());
 				}
 				builder.append(",");
 			}

@@ -30,29 +30,16 @@ public class Main{
 		
 		//TODO
 		
-//		try{
-//			formatIndex(
-//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\0(1 i id)\\selfloop_k2_l2h"),
-//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\0(1 i id)\\selfloop_k2_h2p"),
-//				4//DO NOT FORGET TO UPDATE THE LABEL COUNT!!! 2x
-//			);
-//		}catch(IOException e){
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-		
-		long total = 0;
-		int n = 37;
-		for(int i = 1; i <= n; i++){
-		//	total += factorial(n) / (factorial(i) * factorial(n - i));
-			System.out.print(n + "C" + i + " + ");
+		try{
+			formatIndex(
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_l2h"),
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_h2p"),
+				8//DO NOT FORGET TO UPDATE THE LABEL COUNT!!! 2x
+			);
+		}catch(IOException e){
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		System.out.println(total);
-	}
-	
-	
-	private static long factorial(int n){
-		return n <= 1 ? 1 : StrictMath.multiplyExact(n, factorial(n - 1));
 	}
 	
 	private static void formatIndex(Path lh, Path hp, int lc) throws IOException{
