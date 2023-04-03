@@ -18,7 +18,7 @@ import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 import dev.roanh.gmark.util.Util;
 
-public class EquivalenceClass<V extends Comparable<V>>{
+public class Index<V extends Comparable<V>>{
 	private static final boolean COMPUTE_CORES = false;
 	private RangeList<List<LabelledPath>> segments;
 	private final int k;
@@ -55,7 +55,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(4);
+		Index<Integer> eq = new Index<Integer>(4);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -98,7 +98,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		}).forEach(System.out::println);
 	}
 	
-	public EquivalenceClass(int k){
+	public Index(int k){
 		this.k = k;
 		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
 	}
@@ -429,8 +429,8 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		}
 		
 		public boolean equalSegments(LabelledPath other){
-			main: for(List<EquivalenceClass<V>.LabelledPath> seg : segs){
-				for(List<EquivalenceClass<V>.LabelledPath> test : other.segs){
+			main: for(List<Index<V>.LabelledPath> seg : segs){
+				for(List<Index<V>.LabelledPath> test : other.segs){
 					if(seg.get(0).segId == test.get(0).segId && seg.get(1).segId == test.get(1).segId){
 						continue main;
 					}
@@ -477,8 +477,8 @@ public class EquivalenceClass<V extends Comparable<V>>{
 				builder.append(",");
 			}
 			builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
-			for(List<EquivalenceClass<V>.LabelledPath> seq : segs){
-				for(EquivalenceClass<V>.LabelledPath p : seq){
+			for(List<Index<V>.LabelledPath> seq : segs){
+				for(Index<V>.LabelledPath p : seq){
 					builder.append(p.segId);
 				}
 				builder.append(",");
@@ -505,8 +505,8 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		
 		@Override
 		public boolean equals(Object obj){
-			if(obj instanceof EquivalenceClass.Pair){
-				EquivalenceClass<?>.Pair other = (EquivalenceClass<?>.Pair)obj;
+			if(obj instanceof Index.Pair){
+				Index<?>.Pair other = (Index<?>.Pair)obj;
 				return src.equals(other.src) && trg.equals(other.trg);
 			}else{
 				return false;
