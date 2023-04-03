@@ -68,7 +68,8 @@ public class Main{
 				int num = Integer.parseInt(args[0]);
 				do{
 					int minor = num % lc;
-					label = label.isEmpty() ? String.valueOf(minor) : (minor + "." + label);
+//					label = label.isEmpty() ? String.valueOf(minor) : (minor + "." + label);
+					label = label.isEmpty() ? (minor >= lc / 2 ? (minor - lc / 2 + "⁻") : String.valueOf(minor)) : ((minor >= lc / 2 ? (minor - lc / 2 + "⁻") : String.valueOf(minor)) + label);
 					num = ((num - minor) / lc) - 1;
 				}while(num >= 0);
 				
@@ -95,14 +96,19 @@ public class Main{
 			int c = 2;
 			List<Integer> data = blocks.get(block);
 			for(int j = 0; j < data.size(); j += 2){
+				System.out.print("(" + data.get(j) + "," + data.get(j + 1) + "): ");
 				out[c++] += "(" + data.get(j) + "," + data.get(j + 1) + ")";
 			}
 			
+			System.out.print("[");
 			out[end - 1] += "-----";
 			c = end;
+			labels.get(block).sort(null);
 			for(String l : labels.get(block)){
+				System.out.print(l + ", ");
 				out[c++] += l;
 			}
+			System.out.println("]");
 			
 			for(int i = 0; i < out.length; i++){
 				while(out[i].length() < pad * (block + 1)){
