@@ -3,6 +3,7 @@ package dev.roanh.cpqindex;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,7 +20,7 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 import dev.roanh.gmark.util.Util;
 
 public class Index<V extends Comparable<V>>{
-	private static final boolean COMPUTE_CORES = false;
+	private final boolean computeCores;
 	private RangeList<List<LabelledPath>> segments;
 	private final int k;
 	private List<Block> blocks = new ArrayList<Block>();
@@ -55,7 +56,7 @@ public class Index<V extends Comparable<V>>{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index<Integer> eq = new Index<Integer>(4);
+		Index<Integer> eq = new Index<Integer>(g, 4, false);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -85,25 +86,49 @@ public class Index<V extends Comparable<V>>{
 //		
 //		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2);
 		
-		eq.partition(g);//TODO improve API
-		eq.computeBlocks();
 		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
-		eq.blocks.stream().sorted((a, b)->{
-			int c = Integer.compare(a.paths.get(0).src, b.paths.get(0).src);
-			if(c == 0){
-				c = Integer.compare(a.paths.get(0).trg, b.paths.get(0).trg);
-			}
-			
-			return c;
-		}).forEach(System.out::println);
+		eq.sort();
+		eq.blocks.forEach(System.out::println);
 	}
 	
-	public Index(int k){
+	public void sort(){
+		for(Block block : blocks){
+			block.paths.sort(this::sortPairs);
+			block.labels.sort((a, b)->{
+				int c = Integer.compare(a.size(), b.size());
+				if(c == 0){
+					for(int i = 0; i < a.size(); i++){
+						c = a.get(i).compareTo(b.get(i));
+						if(c != 0){
+							return c;
+						}
+					}
+				}
+				
+				return 0;
+			});
+		}
+		
+		blocks.sort(Comparator.comparing(b->b.paths.get(0), this::sortPairs));
+	}
+	
+	public Index(UniqueGraph<V, Predicate> g, int k){
+		this(g, k, true);
+	}
+	
+	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores){
+		this.computeCores = computeCores;
 		this.k = k;
 		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
+		partition(g);
+		computeBlocks();
 	}
 	
-	public void computeBlocks(){
+	public List<Block> getBlocks(){
+		return blocks;
+	}
+	
+	private void computeBlocks(){
 		Map<Pair, Block> pairMap = new HashMap<Pair, Block>();
 //		Map<Pair, Block> prevMap = null;
 		
@@ -266,6 +291,15 @@ public class Index<V extends Comparable<V>>{
 		}
 	}
 	
+	private int sortPairs(Pair a, Pair b){
+		int c = a.getSource().compareTo(b.getSource());
+		if(c == 0){
+			c = a.getTarget().compareTo(b.getTarget());
+		}
+
+		return c;
+	}
+	
 	private int sortPaths(LabelledPath a, LabelledPath b){
 		if(a.equalSegments(b)){
 			if(a.isLoop() && b.isLoop()){
@@ -304,7 +338,7 @@ public class Index<V extends Comparable<V>>{
 		}
 	}
 	
-	private final class Block{
+	public final class Block{
 		private final int id;
 		private List<Pair> paths;
 		private List<List<Predicate>> labels;
@@ -324,9 +358,17 @@ public class Index<V extends Comparable<V>>{
 			
 //			System.out.println("block from: " + slice.size());
 			
-			if(COMPUTE_CORES){
+			if(computeCores){
 				computeCores(slice.get(0).segs, inherited);
 			}
+		}
+		
+		public List<Pair> getPaths(){
+			return paths;
+		}
+		
+		public List<List<Predicate>> getLabels(){
+			return labels;
 		}
 		
 		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
@@ -490,13 +532,21 @@ public class Index<V extends Comparable<V>>{
 		}
 	}
 	
-	private final class Pair{//aka path, aka st-pair, aka pathkey
-		private V src;//src,u
-		private V trg;//trg,v
+	public final class Pair{//aka path, aka st-pair, aka pathkey
+		private final V src;//src,u
+		private final V trg;//trg,v
 		
 		private Pair(V src, V trg){
 			this.src = src;
 			this.trg = trg;
+		}
+		
+		public V getSource(){
+			return src;
+		}
+		
+		public V getTarget(){
+			return trg;
 		}
 		
 		public boolean isLoop(){
