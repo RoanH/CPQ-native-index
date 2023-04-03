@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +29,6 @@ public class CanonFormTest{
 		
 		CanonForm canon = new CanonForm(CPQ.intersect(CPQ.labels(l1, l3), CPQ.labels(l1, l2)));
 		assertEquals("s=4,t=7,l0={0,1},l1={2},l2={3},e0={5},e1={6},e2={7},e3={7},e4={0,1},e5={2},e6={3},e7={}", canon.toStringCanon());
-		System.out.println(Arrays.toString(canon.toBinaryCanon()) + " / " + canon.toBase64Canon());
 		assertArrayEquals(new byte[]{2, 39, 24, 16, 33, 40, 69, -102, 113, -25, -96, 74, 44, 0}, canon.toBinaryCanon());
 		assertEquals("AicYECEoRZpx56BKLAA=", canon.toBase64Canon());
 	}
