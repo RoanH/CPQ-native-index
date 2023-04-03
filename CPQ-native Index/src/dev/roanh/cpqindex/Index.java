@@ -19,6 +19,16 @@ import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 import dev.roanh.gmark.util.Util;
 
+/**
+ * Implementation of a graph database index based on k-path-bisimulation
+ * and with support for indexing by CPQ cores. This index is based on the
+ * path index proposed by Yuya Sasaki, George Fletcher and Makoto Onizuka.
+ * @author Roan
+ * @param <V> The graph vertex data type.
+ * @see <a href="https://doi.org/10.1109/ICDE53745.2022.00054">Yuya Sasaki, George Fletcher and Makoto Onizuka,
+ *      "Language-aware indexing for conjunctive path queries", in IEEE 38th ICDE, 2022</a>
+ * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
+ */
 public class Index<V extends Comparable<V>>{
 	private final boolean computeCores;
 	private final int k;
@@ -534,23 +544,52 @@ public class Index<V extends Comparable<V>>{
 		}
 	}
 	
-	public final class Pair{//aka path, aka st-pair, aka pathkey
-		private final V src;//src,u
-		private final V trg;//trg,v
+	/**
+	 * Represents a pair of two vertices, also referred to as a
+	 * path or an st-pair.
+	 * @author Roan
+	 */
+	public final class Pair{
+		/**
+		 * The source vertex.
+		 */
+		private final V src;
+		/**
+		 * The target vertex.
+		 */
+		private final V trg;
 		
+		/**
+		 * Constructs a new pair with the given source and target vertex.
+		 * @param src The source vertex.
+		 * @param trg The target vertex.
+		 */
 		private Pair(V src, V trg){
 			this.src = src;
 			this.trg = trg;
 		}
 		
+		/**
+		 * Get the source vertex of this pair.
+		 * @return The source vertex of this pair.
+		 */
 		public V getSource(){
 			return src;
 		}
 		
+		/**
+		 * Gets the target vertex of this pair.
+		 * @return The target vertex of thsi pair.
+		 */
 		public V getTarget(){
 			return trg;
 		}
 		
+		/**
+		 * Checks if this pair represents a loop, that is,
+		 * if the source and target vertex are equivalent.
+		 * @return True if this pair represents a loop.
+		 */
 		public boolean isLoop(){
 			return src.equals(trg);
 		}
