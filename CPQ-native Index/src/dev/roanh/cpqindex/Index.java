@@ -89,6 +89,24 @@ public class Index<V extends Comparable<V>>{
 		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
 		eq.sort();
 		eq.blocks.forEach(System.out::println);
+		
+		eq.print(9);
+	}
+	
+	public Index(UniqueGraph<V, Predicate> g, int k){
+		this(g, k, true);
+	}
+	
+	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores){
+		this.computeCores = computeCores;
+		this.k = k;
+		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
+		partition(g);
+		computeBlocks();
+	}
+	
+	public List<Block> getBlocks(){
+		return blocks;
 	}
 	
 	public void sort(){
@@ -112,20 +130,38 @@ public class Index<V extends Comparable<V>>{
 		blocks.sort(Comparator.comparing(b->b.paths.get(0), this::sortPairs));
 	}
 	
-	public Index(UniqueGraph<V, Predicate> g, int k){
-		this(g, k, true);
-	}
-	
-	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores){
-		this.computeCores = computeCores;
-		this.k = k;
-		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
-		partition(g);
-		computeBlocks();
-	}
-	
-	public List<Block> getBlocks(){
-		return blocks;
+	public void print(int blockWidth){
+		StringBuilder[] out = new StringBuilder[3 + blocks.stream().mapToInt(b->b.paths.size() + b.labels.size()).max().orElse(0)];
+		int labStart = 3 + blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0);
+		for(int i = 0; i < out.length; i++){
+			out[i] = new StringBuilder();
+		}
+		
+		int col = 0;
+		for(Block block : blocks){
+			out[0].append(block.id);
+			for(int i = 0; i < block.paths.size(); i++){
+				out[i + 2].append(block.paths.get(i));
+			}
+			
+			out[labStart - 1].append("-----");
+			for(int i = 0; i < block.labels.size(); i++){
+				for(Predicate p : block.labels.get(i)){
+					out[labStart + i].append(p.getAlias());
+				}
+			}
+			
+			col++;
+			for(int i = 0; i < out.length; i++){
+				while(out[i].length() < blockWidth * col){
+					out[i].append(' ');
+				}
+			}
+		}
+		
+		for(StringBuilder buf : out){
+			System.out.println(buf.toString());
+		}
 	}
 	
 	private void computeBlocks(){
