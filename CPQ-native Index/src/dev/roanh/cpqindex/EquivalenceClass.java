@@ -19,9 +19,9 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 import dev.roanh.gmark.util.Util;
 
 public class EquivalenceClass<V extends Comparable<V>>{
+	private static final boolean COMPUTE_CORES = false;
 	private RangeList<List<LabelledPath>> segments;
 	private final int k;
-	private final int labelCount;
 	private List<Block> blocks = new ArrayList<Block>();
 	
 	public static void main(String[] args){
@@ -49,7 +49,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		g.addUniqueEdge(2, 4, b);
 		g.addUniqueEdge(3, 4, a);
 		
-		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3, 3);
+		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(3);
 		
 //		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
 //		g.addUniqueNode(0);
@@ -58,7 +58,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 //		g.addUniqueEdge(0, 1, a);
 //		g.addUniqueEdge(1, 1, b);
 //		
-//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2, 2);
+//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2);
 		
 		eq.partition(g);//TODO improve API
 		eq.computeBlocks();
@@ -68,9 +68,8 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		}
 	}
 	
-	public EquivalenceClass(int k, int labels){
+	public EquivalenceClass(int k){
 		this.k = k;
-		labelCount = labels;
 		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
 	}
 	
@@ -166,30 +165,15 @@ public class EquivalenceClass<V extends Comparable<V>>{
 		LabelledPath prev = null;
 		int id = 1;
 		for(LabelledPath seg : segOne){
-			if(prev == null){
-				seg.segId = id;
-			}else{
-				if(seg.labels.equals(prev.labels)){
-					if(seg.isLoop() ^ prev.isLoop()){
-						id++;
-						seg.segId = id;
-					}else{
-						//if labels and cyclic patterns (loop) are the same the same segment ID is assigned
-						seg.segId = id;
-					}
-				}else{
-					id++;
-					seg.segId = id;
-				}
+			if(prev != null && (!seg.labels.equals(prev.labels) || seg.isLoop() ^ prev.isLoop())){
+				//if labels and cyclic patterns (loop) are not the same a new ID is started
+				id++;
 			}
 
+			seg.segId = id;
 			prev = seg;
 		}
 		
-		
-//		System.out.println(pathMap);
-		
-//		segOne.forEach(l->System.out.println(l.pair + " / " + l.labels + " / " + l.segId));
 		
 //		System.out.println("================ k-path");
 		//=================================================================================
@@ -228,31 +212,18 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			}
 
 			//sort
-
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
-//			System.out.println("AFTER SORT");
-//			segs.forEach(System.out::println);
 
 			//assign ids
 			prev = null;
 			for(LabelledPath path : segs){
-				if(prev == null){
-					path.segId = id;
-				}else{
-					if(path.equalSegments(prev)){
-						if(prev.isLoop() ^ path.isLoop()){
-							//increase id if loop status differs
-							id++;
-						}
-					}else{
-						//increase id if segments differ
-						id++;
-					}
-					
-					path.segId = id;
+				if(prev != null && (!path.equalSegments(prev) || prev.isLoop() ^ path.isLoop())){
+					//increase id if loop status or segments differs
+					id++;
 				}
 
+				path.segId = id;
 				prev = path;
 			}
 		}
@@ -316,7 +287,9 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			
 //			System.out.println("block from: " + slice.size());
 			
-			//TODO computeCores(slice.get(0).segs, inherited);//just toggle this for now I guess
+			if(COMPUTE_CORES){
+				computeCores(slice.get(0).segs, inherited);
+			}
 		}
 		
 		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
@@ -358,7 +331,6 @@ public class EquivalenceClass<V extends Comparable<V>>{
 //			cores.forEach(System.out::println);
 			
 			Util.computeAllSubsets(cores, set->{
-//				System.out.println("add: " + set);
 				if(set.size() >= 2){
 					CPQ q = CPQ.intersect(set);
 					String canon = new CanonForm(q).toBase64Canon();
@@ -386,8 +358,7 @@ public class EquivalenceClass<V extends Comparable<V>>{
 			builder.append(",labels={");
 			for(List<Predicate> seq : labels){
 				for(Predicate p : seq){
-//					builder.append(p.getAlias());
-					builder.append(p.isInverse() ? (p.getID() + labelCount) : p.getID());
+					builder.append(p.getAlias());
 				}
 				builder.append(",");
 			}
@@ -397,13 +368,15 @@ public class EquivalenceClass<V extends Comparable<V>>{
 				builder.append(core.toString());
 				builder.append(",");
 			}
-			builder.delete(builder.length() - 1, builder.length());
+			if(!cores.isEmpty()){
+				builder.delete(builder.length() - 1, builder.length());
+			}
 			builder.append("}]");
 			return builder.toString();
 		}
 	}
 	
-	private final class LabelledPath{//TODO currently removed the optimisations that store seg/label sequences as integers
+	private final class LabelledPath{
 		private final Pair pair;
 		private Set<List<Predicate>> labels = new HashSet<List<Predicate>>();//label sequences for this path
 		
