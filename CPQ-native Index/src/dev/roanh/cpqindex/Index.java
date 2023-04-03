@@ -21,7 +21,6 @@ import dev.roanh.gmark.util.Util;
 
 public class Index<V extends Comparable<V>>{
 	private final boolean computeCores;
-	private RangeList<List<LabelledPath>> segments;
 	private final int k;
 	private List<Block> blocks = new ArrayList<Block>();
 	
@@ -93,22 +92,26 @@ public class Index<V extends Comparable<V>>{
 		eq.print(9);
 	}
 	
-	public Index(UniqueGraph<V, Predicate> g, int k){
+	public Index(UniqueGraph<V, Predicate> g, int k) throws IllegalArgumentException{
 		this(g, k, true);
 	}
 	
-	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores){
+	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores) throws IllegalArgumentException{
 		this.computeCores = computeCores;
 		this.k = k;
-		segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
-		partition(g);
-		computeBlocks();
+		computeBlocks(partition(g));
 	}
 	
 	public List<Block> getBlocks(){
 		return blocks;
 	}
 	
+	/**
+	 * Sorts all the list of blocks of this index. There's is no real
+	 * reason to do this other than to make the output of {@link #print(int)}
+	 * more organised.
+	 * @see #print(int)
+	 */
 	public void sort(){
 		for(Block block : blocks){
 			block.paths.sort(this::sortPairs);
@@ -130,6 +133,11 @@ public class Index<V extends Comparable<V>>{
 		blocks.sort(Comparator.comparing(b->b.paths.get(0), this::sortPairs));
 	}
 	
+	/**
+	 * Prints the index to standard output.
+	 * @param blockWidth The width to allocate for each block column.
+	 * @see #sort()
+	 */
 	public void print(int blockWidth){
 		StringBuilder[] out = new StringBuilder[3 + blocks.stream().mapToInt(b->b.paths.size() + b.labels.size()).max().orElse(0)];
 		int labStart = 3 + blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0);
@@ -164,22 +172,15 @@ public class Index<V extends Comparable<V>>{
 		}
 	}
 	
-	private void computeBlocks(){
+	private void computeBlocks(RangeList<List<LabelledPath>> segments){
 		Map<Pair, Block> pairMap = new HashMap<Pair, Block>();
-//		Map<Pair, Block> prevMap = null;
 		
 		for(int j = 0; j < k; j++){
-//			prevMap = nextMap;
-//			nextMap = new HashMap<Pair, Block>();
-			
 			List<LabelledPath> segs = segments.get(j);
-			System.out.println("===== " + (j + 1));
-
 			int start = 0;
 			int lastId = segs.get(0).segId;
-			for(int i = 0; i < segs.size(); i++){
-//				System.out.println("p: " + segs.get(i));
-				if(segs.get(i).segId != lastId){
+			for(int i = 0; i <= segs.size(); i++){
+				if(i == segs.size() || segs.get(i).segId != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
 					
 					List<Block> inherited = new ArrayList<Block>();
@@ -193,8 +194,6 @@ public class Index<V extends Comparable<V>>{
 					}
 					
 					Block block = new Block(slice, inherited);
-					System.out.println(block);
-					
 					if(j != k - 1){
 						for(Pair pair : block.paths){
 							pairMap.put(pair, block);
@@ -203,55 +202,31 @@ public class Index<V extends Comparable<V>>{
 						blocks.add(block);
 					}
 					
-					lastId = segs.get(i).segId;
-					start = i;
-				}
-			}
-			
-			List<LabelledPath> slice = segs.subList(start, segs.size());
-			
-			List<Block> inherited = new ArrayList<Block>();
-			if(j > 0){
-				for(LabelledPath path : slice){
-					Block b = pairMap.remove(path.pair);
-					if(b != null){
-						inherited.add(b);
+					if(i != segs.size()){
+						lastId = segs.get(i).segId;
+						start = i;
 					}
 				}
 			}
-			
-			Block block = new Block(slice, inherited);
-			System.out.println(block);
-			
-			if(j != k - 1){
-				for(Pair pair : block.paths){
-					pairMap.put(pair, block);
-				}
-			}else{
-				blocks.add(block);
-			}
-			
-			System.out.println("Block count: " + blocks.size());
 		}
 		
 		//any remaining pairs denote unused blocks
-		System.out.println("remain: " + pairMap.keySet());
 		pairMap.values().stream().distinct().forEach(blocks::add);
 	}
 	
 	//partition according to k-path-bisimulation
-	private void partition(UniqueGraph<V, Predicate> g) throws IllegalArgumentException{
+	private RangeList<List<LabelledPath>> partition(UniqueGraph<V, Predicate> g) throws IllegalArgumentException{
 		if(k <= 0){
 			throw new IllegalArgumentException("Invalid value of k for bisimulation, has to be 1 or greater.");
 		}
 		
-		//we first compute classes for 1-path-bisimulation
+		RangeList<List<LabelledPath>> segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
+		
+		//classes for 1-path-bisimulation
 		Map<Pair, LabelledPath> pathMap = new HashMap<Pair, LabelledPath>();
 		for(GraphEdge<V, Predicate> edge : g.getEdges()){
-			//forward edges S1(u,v) <- all labels on edges between u and v
+			//forward and backward edges are just the labels on those edges
 			pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), LabelledPath::new).addLabel(edge.getData());
-			
-			//inverse edges S1(v,u) <- all labels on inverse edges between v and u
 			pathMap.computeIfAbsent(new Pair(edge.getTarget(), edge.getSource()), LabelledPath::new).addLabel(edge.getData().getInverse());
 		}
 		
@@ -272,21 +247,13 @@ public class Index<V extends Comparable<V>>{
 			prev = seg;
 		}
 		
-		
-//		System.out.println("================ k-path");
-		//=================================================================================
-		
-		
+		//classes for 2-path-bisimulation to k-path-bisimulation
 		for(int i = 1; i < k; i++){
 			pathMap.clear();
 
 			id++;
-			System.out.println("----- " + (i + 1));
-			for(int k1 = i - 1; k1 >= 0; k1--){
+			for(int k1 = i - 1; k1 >= 0; k1--){//all combinations to make CPQi
 				int k2 = i - k1 - 1;
-				
-//				System.out.println((k1 + 1) + " + " + (k2 + 1));
-				//all k's are one lower than their actual meaning
 				
 				for(LabelledPath seg : segments.get(k1)){
 					for(LabelledPath end : segments.get(k2)){
@@ -313,7 +280,7 @@ public class Index<V extends Comparable<V>>{
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
 
-			//assign ids
+			//assign IDs
 			prev = null;
 			for(LabelledPath path : segs){
 				if(prev != null && (!path.equalSegments(prev) || prev.isLoop() ^ path.isLoop())){
@@ -325,6 +292,8 @@ public class Index<V extends Comparable<V>>{
 				prev = path;
 			}
 		}
+		
+		return segments;
 	}
 	
 	private int sortPairs(Pair a, Pair b){
@@ -377,9 +346,9 @@ public class Index<V extends Comparable<V>>{
 	public final class Block{
 		private final int id;
 		private List<Pair> paths;
-		private List<List<Predicate>> labels;
-		private List<CPQ> cores = new ArrayList<CPQ>();
-		private Set<String> canonCores = new HashSet<String>();
+		private List<List<Predicate>> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use
+		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically only need #canonCores, but this is good for debugging
+		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug
 		
 		private Block(List<LabelledPath> slice, List<Block> inherited){
 			id = slice.get(0).segId;
@@ -387,12 +356,10 @@ public class Index<V extends Comparable<V>>{
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
 			slice.forEach(s->s.block = this);
 			
-			//if any of the segments was
+			//labels inherited from previous layer blocks
 			for(Block block : inherited){
 				labels.addAll(block.labels);
 			}
-			
-//			System.out.println("block from: " + slice.size());
 			
 			if(computeCores){
 				computeCores(slice.get(0).segs, inherited);
@@ -407,6 +374,10 @@ public class Index<V extends Comparable<V>>{
 			return labels;
 		}
 		
+		public boolean isLoop(){
+			return paths.get(0).isLoop();
+		}
+		
 		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
 			if(segs.isEmpty()){
 				labels.stream().map(CPQ::labels).forEach(q->{
@@ -416,7 +387,7 @@ public class Index<V extends Comparable<V>>{
 					}
 				});
 			}else{
-				
+				//cores from previous layers
 				for(Block block : inherited){//TODO technically we have a number of uniqueness guarantees here (unique within a block)
 					for(CPQ q : block.cores){
 						String canon = new CanonForm(q).toBase64Canon();
@@ -426,10 +397,8 @@ public class Index<V extends Comparable<V>>{
 					}
 				}
 				
-				//TODO inherited cores are still a thing
-				
+				//all combinations of cores from previous layers
 				for(List<LabelledPath> pair : segs){
-//					System.out.println("concat: " + pair.get(0).block.cores.size() + " | " + pair.get(1).block.cores.size() + " paths: " + pair.get(0).pair + " | " + pair.get(1).pair);
 					for(CPQ core1 : pair.get(0).block.cores){
 						for(CPQ core2 : pair.get(1).block.cores){
 							CPQ q = CPQ.concat(core1, core2);
@@ -442,9 +411,7 @@ public class Index<V extends Comparable<V>>{
 				}
 			}
 			
-//			System.out.println("init set for " + paths + " | " + labels.size());
-//			cores.forEach(System.out::println);
-			
+			//all intersections of cores
 			Util.computeAllSubsets(cores, set->{
 				if(set.size() >= 2){
 					CPQ q = CPQ.intersect(set);
@@ -455,7 +422,8 @@ public class Index<V extends Comparable<V>>{
 				}
 			});
 			
-			if(paths.get(0).isLoop()){//TODO does it suffice to only check one?
+			//intersect with identity if possible
+			if(isLoop()){
 				final int max = cores.size();
 				for(int i = 0; i < max; i++){
 					cores.add(CPQ.intersect(cores.get(i), CPQ.id()));
@@ -473,8 +441,7 @@ public class Index<V extends Comparable<V>>{
 			builder.append(",labels={");
 			for(List<Predicate> seq : labels){
 				for(Predicate p : seq){
-					builder.append(p.isInverse() ? (p.getID() + 4) : p.getID());//TODO
-//					builder.append(p.getAlias());
+					builder.append(p.getAlias());
 				}
 				builder.append(",");
 			}
@@ -529,7 +496,6 @@ public class Index<V extends Comparable<V>>{
 		}
 		
 		public void addLabel(List<Predicate> first, List<Predicate> last){
-			//addLabel((1 + first) * labelCount * 2 + last);//TODO formula up for discussion I guess
 			List<Predicate> path = new ArrayList<Predicate>(first.size() + last.size());
 			path.addAll(first);
 			path.addAll(last);
