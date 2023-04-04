@@ -475,14 +475,33 @@ public class Index<V extends Comparable<V>>{
 	 * @author Roan
 	 */
 	private final class PathPair{
+		/**
+		 * The first path of this pair, also the start of the joined path.
+		 */
 		private final LabelledPath first;
+		/**
+		 * The second path of this pair, also the end of the joined path.
+		 */
 		private final LabelledPath second;
 		
+		/**
+		 * Constructs a new path pair with the given paths.
+		 * @param first The first and start path.
+		 * @param second The second and end path.
+		 */
 		private PathPair(LabelledPath first, LabelledPath second){
 			this.first = first;
 			this.second = second;
 		}
 		
+		/**
+		 * Tests of this path pair is equal to another path pair
+		 * based on the segment IDs assigned to the stored paths.
+		 * @param other The other path pair to test against.
+		 * @return True if this path pair has segment IDs equal
+		 *         to the given path pair.
+		 * @see LabelledPath#segId
+		 */
 		private boolean equalSegId(PathPair other){
 			return first.segId == other.first.segId && second.segId == other.second.segId;
 		}
