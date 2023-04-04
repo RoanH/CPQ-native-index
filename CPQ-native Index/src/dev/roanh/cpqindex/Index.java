@@ -388,7 +388,7 @@ public class Index<V extends Comparable<V>>{
 			return paths.get(0).isLoop();
 		}
 		
-		private void computeCores(Set<List<LabelledPath>> segs, List<Block> inherited){
+		private void computeCores(Set<PathPair> segs, List<Block> inherited){
 			if(segs.isEmpty()){
 				labels.stream().map(CPQ::labels).forEach(q->{
 					String canon = new CanonForm(q).toBase64Canon();
@@ -408,9 +408,9 @@ public class Index<V extends Comparable<V>>{
 				}
 				
 				//all combinations of cores from previous layers
-				for(List<LabelledPath> pair : segs){
-					for(CPQ core1 : pair.get(0).block.cores){
-						for(CPQ core2 : pair.get(1).block.cores){
+				for(PathPair pair : segs){
+					for(CPQ core1 : pair.first.block.cores){
+						for(CPQ core2 : pair.second.block.cores){
 							CPQ q = CPQ.concat(core1, core2);
 							String canon = new CanonForm(q).toBase64Canon();
 							if(canonCores.add(canon)){
@@ -469,24 +469,72 @@ public class Index<V extends Comparable<V>>{
 		}
 	}
 	
+	/**
+	 * Represents a pair of two labelled paths
+	 * that were joined to form a new path.
+	 * @author Roan
+	 */
+	private final class PathPair{
+		private final LabelledPath first;
+		private final LabelledPath second;
+		
+		private PathPair(LabelledPath first, LabelledPath second){
+			this.first = first;
+			this.second = second;
+		}
+		
+		private boolean equalSegId(PathPair other){
+			return first.segId == other.first.segId && second.segId == other.second.segId;
+		}
+		
+		@Override
+		public boolean equals(Object obj){
+			if(obj instanceof Index<?>.PathPair){
+				Index<?>.PathPair other = (Index<?>.PathPair)obj;
+				return first.equals(other.first) && second.equals(other.second);
+			}else{
+				return false;
+			}
+		}
+		
+		@Override
+		public int hashCode(){
+			return Objects.hash(first, second);
+		}
+	}
+	
+	/**
+	 * Represents a path through the graph identified by
+	 * a source target node pair and a number of label
+	 * sequences that exist between that node pair.
+	 * @author Roan
+	 */
 	private final class LabelledPath{
+		/**
+		 * The node pair for this labelled path. All stored label
+		 * sequences are between the vertices of this pair.
+		 */
 		private final Pair pair;
-		private Set<List<Predicate>> labels = new HashSet<List<Predicate>>();//label sequences for this path
+		/**
+		 * The label sequences that were found that exist between
+		 * the vertices of the node pair for this path.
+		 */
+		private Set<List<Predicate>> labels = new HashSet<List<Predicate>>();
 		
 		//id stuff
 		private int segId;
 		private Block block;
 		
-		private Set<List<LabelledPath>> segs = new HashSet<List<LabelledPath>>();//effectively a history of blocks that were combined to form this path
+		private Set<PathPair> segs = new HashSet<PathPair>();//effectively a history of blocks that were combined to form this path
 		
 		private LabelledPath(Pair pair){
 			this.pair = pair;
 		}
 		
 		public boolean equalSegments(LabelledPath other){
-			main: for(List<Index<V>.LabelledPath> seg : segs){
-				for(List<Index<V>.LabelledPath> test : other.segs){
-					if(seg.get(0).segId == test.get(0).segId && seg.get(1).segId == test.get(1).segId){
+			main: for(Index<V>.PathPair seg : segs){
+				for(Index<V>.PathPair test : other.segs){
+					if(seg.equalSegId(test)){
 						continue main;
 					}
 				}
@@ -498,7 +546,7 @@ public class Index<V extends Comparable<V>>{
 		}
 		
 		public void addSegment(LabelledPath first, LabelledPath last){
-			segs.add(Arrays.asList(first, last));
+			segs.add(new PathPair(first, last));
 		}
 		
 		public void addLabel(Predicate label){
@@ -531,10 +579,9 @@ public class Index<V extends Comparable<V>>{
 				builder.append(",");
 			}
 			builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
-			for(List<Index<V>.LabelledPath> seq : segs){
-				for(Index<V>.LabelledPath p : seq){
-					builder.append(p.segId);
-				}
+			for(PathPair seq : segs){
+				builder.append(seq.first.segId);
+				builder.append(seq.second.segId);
 				builder.append(",");
 			}
 			builder.delete(builder.length() - 1, builder.length());
