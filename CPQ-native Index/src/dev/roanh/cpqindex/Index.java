@@ -3,6 +3,7 @@ package dev.roanh.cpqindex;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +34,7 @@ public class Index<V extends Comparable<V>>{
 	private final boolean computeCores;
 	private final int k;
 	private List<Block> blocks = new ArrayList<Block>();
+	private Map<String, List<Block>> coreToBlock = new HashMap<String, List<Block>>();
 	
 	public static void main(String[] args){
 		try{
@@ -110,6 +112,15 @@ public class Index<V extends Comparable<V>>{
 		this.computeCores = computeCores;
 		this.k = k;
 		computeBlocks(partition(g));
+		mapCoresToBlocks();
+	}
+	
+	public List<Pair> query(CPQ cpq) throws IllegalArgumentException{
+		if(cpq.getDiameter() > k){
+			throw new IllegalArgumentException("");
+		}
+		
+		return coreToBlock.getOrDefault(new CanonForm(cpq).toBase64Canon(), Collections.emptyList()).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
 	}
 	
 	public List<Block> getBlocks(){
@@ -179,6 +190,14 @@ public class Index<V extends Comparable<V>>{
 		
 		for(StringBuilder buf : out){
 			System.out.println(buf.toString());
+		}
+	}
+	
+	private void mapCoresToBlocks(){
+		for(Block block : blocks){
+			for(String core : block.canonCores){//TODO again, should really use the byte form
+				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
+			}
 		}
 	}
 	
