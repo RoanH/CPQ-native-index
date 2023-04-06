@@ -67,7 +67,7 @@ public class Index<V extends Comparable<V>>{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index<Integer> eq = new Index<Integer>(g, 4, false);
+		Index<Integer> eq = new Index<Integer>(g, 2, true);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -102,6 +102,10 @@ public class Index<V extends Comparable<V>>{
 		eq.blocks.forEach(System.out::println);
 		
 		eq.print(9);
+		
+		CPQ q = CPQ.labels(l3, l3.getInverse());
+		System.out.println("run: " + q);
+		System.out.println(eq.query(q));
 	}
 	
 	public Index(UniqueGraph<V, Predicate> g, int k) throws IllegalArgumentException{
@@ -117,10 +121,14 @@ public class Index<V extends Comparable<V>>{
 	
 	public List<Pair> query(CPQ cpq) throws IllegalArgumentException{
 		if(cpq.getDiameter() > k){
-			throw new IllegalArgumentException("");
+			throw new IllegalArgumentException("Query diameter large than index diameter.");
 		}
 		
-		return coreToBlock.getOrDefault(new CanonForm(cpq).toBase64Canon(), Collections.emptyList()).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
+		String key = new CanonForm(cpq).toBase64Canon();
+		System.out.println("key: " + key);
+		System.out.println("ret: " + coreToBlock.get(key));
+		
+		return coreToBlock.getOrDefault(key, Collections.emptyList()).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
 	}
 	
 	public List<Block> getBlocks(){
@@ -160,7 +168,7 @@ public class Index<V extends Comparable<V>>{
 	 * @see #sort()
 	 */
 	public void print(int blockWidth){
-		StringBuilder[] out = new StringBuilder[3 + blocks.stream().mapToInt(b->b.paths.size() + b.labels.size()).max().orElse(0)];
+		StringBuilder[] out = new StringBuilder[3 + blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0) + blocks.stream().mapToInt(b->b.labels.size()).max().orElse(0)];
 		int labStart = 3 + blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0);
 		for(int i = 0; i < out.length; i++){
 			out[i] = new StringBuilder();

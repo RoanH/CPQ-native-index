@@ -74,7 +74,7 @@ public class CanonForm{
 	 */
 	private CanonForm(UniqueGraph<Object, Void> core, Vertex src, Vertex trg){
 		//compute a coloured graph
-		ColoredGraph input = Nauty.toColoredGraph(core);
+		ColoredGraph input = Nauty.toColoredGraph(core, src, trg);
 		
 		//compute the canonical labelling with nauty
 		int[] relabel = Nauty.computeCanonicalLabelling(input);

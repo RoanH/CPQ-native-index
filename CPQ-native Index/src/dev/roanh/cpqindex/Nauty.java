@@ -1,6 +1,7 @@
 package dev.roanh.cpqindex;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,19 +77,27 @@ public class Nauty{
 	 * @param <V> The vertex data type.
 	 * @param <E> The edge label data type.
 	 * @param graph The input graph to transform.
+	 * @param source The data for the source vertex of the graph.
+	 * @param target The data for the target vertex of the graph.
 	 * @return The constructed coloured graph.
 	 * @see ColoredGraph
 	 */
 	@SuppressWarnings("unchecked")
-	public static <V, E> ColoredGraph toColoredGraph(UniqueGraph<V, E> graph){
+	public static <V, E> ColoredGraph toColoredGraph(UniqueGraph<V, E> graph, V source, V target){
 		Map<Predicate, List<Integer>> colorMap = new HashMap<Predicate, List<Integer>>();
 		int[][] adj = graph.toAdjacencyList();
 		List<Integer> nolabel = new ArrayList<Integer>();
+		int src = -1;
+		int trg = -1;
 		
 		for(GraphNode<V, E> node : graph.getNodes()){
 			V data = node.getData();
 			if(data instanceof DataProxy){
 				colorMap.computeIfAbsent(((DataProxy<Predicate>)data).getData(), k->new ArrayList<Integer>()).add(node.getID());
+			}else if(data.equals(source)){
+				src = node.getID();
+			}else if(data.equals(target)){
+				trg = node.getID();
 			}else{
 				nolabel.add(node.getID());
 			}
@@ -96,15 +105,24 @@ public class Nauty{
 		
 		return new ColoredGraph(
 			adj,
+			src,
+			trg,
 			colorMap.entrySet().stream().sorted(Entry.comparingByKey()).collect(Collectors.toCollection(ArrayList::new)),
 			nolabel
 		);
 	}
 	
 	/**
-	 * Represents a coloured graph.
+	 * Represents a coloured graph. Colours are assigned to 4 categories
+	 * in this graph:
+	 * <ol>
+	 * <li>Each label is represented by a colour.</li>
+	 * <li>The source vertex is represented by a colour.</li>
+	 * <li>The target vertex is represented by a colour
+	 * unless the target vertex equals the source vertex.</li>
+	 * <li>Any remaining vertices are represented by a colour if any.</li>
+	 * </ol>
 	 * @author Roan
-	 * @see #toColoredGraph(UniqueGraph)
 	 */
 	public static class ColoredGraph{
 		/**
@@ -123,18 +141,24 @@ public class Nauty{
 		 * List of node IDs that have no label.
 		 */
 		private List<Integer> noLabel;
+		private int source;
+		private int target;
 		
 		/**
 		 * Constructs a new coloured graph with the given
 		 * adjacency list and colour information.
 		 * @param adj The adjacency list of the graph.
+		 * @param source The node ID of the source vertex of the graph.
+		 * @param target The node ID of the target vertex of the graph.
 		 * @param labels A list of node IDs for each label.
 		 * @param nolabel A list of node IDs without any label.
 		 */
-		private ColoredGraph(int[][] adj, List<Entry<Predicate, List<Integer>>> labels, List<Integer> nolabel){
+		private ColoredGraph(int[][] adj, int source, int target, List<Entry<Predicate, List<Integer>>> labels, List<Integer> nolabel){
 			graph = adj;
 			this.labels = labels;
 			noLabel = nolabel;
+			this.source = source;
+			this.target = target;
 		}
 		
 		/**
@@ -169,9 +193,19 @@ public class Nauty{
 		 * @return The colour information as a list of lists.
 		 */
 		public List<List<Integer>> getColorLists(){
-			List<List<Integer>> colors = new ArrayList<List<Integer>>(labels.size() + 1);
+			List<List<Integer>> colors = new ArrayList<List<Integer>>(labels.size() + 1 + (source == target ? 1 : 2));
+			
+			colors.add(Collections.singletonList(source));
+			if(target != source){
+				colors.add(Collections.singletonList(target));
+			}
+			
 			labels.forEach(e->colors.add(e.getValue()));
-			colors.add(noLabel);
+			
+			if(!noLabel.isEmpty()){
+				colors.add(noLabel);
+			}
+			
 			return colors;
 		}
 		
