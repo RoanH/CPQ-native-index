@@ -40,7 +40,7 @@ public class CanonForm{
 	/**
 	 * A map containing the IDs of vertices with a specific label.
 	 */
-	private Map<Predicate, int[]> labels = new LinkedHashMap<Predicate, int[]>();
+	private Map<Predicate, Integer> labels = new LinkedHashMap<Predicate, Integer>();
 	/**
 	 * The adjacency list form of the canonically labelled transformed CPQ query graph.
 	 */
@@ -91,13 +91,7 @@ public class CanonForm{
  		
  		//relabel labels
  		for(Entry<Predicate, List<Integer>> pair : input.getLabels()){
- 			List<Integer> old = pair.getValue();
- 			int[] row = new int[old.size()];
- 			for(int i = 0; i < old.size(); i++){
- 				row[i] = inv[old.get(i)];
- 			}
- 			Arrays.sort(row);
- 			labels.put(pair.getKey(), row);
+ 			labels.put(pair.getKey(), pair.getValue().size());
  		}
  		
  		//relabel the graph itself
@@ -126,16 +120,12 @@ public class CanonForm{
 		buf.append(target);
 		buf.append(',');
 		
-		for(Entry<Predicate, int[]> pair : labels.entrySet()){
+		for(Entry<Predicate, Integer> pair : labels.entrySet()){
 			buf.append('l');
 			buf.append(pair.getKey().getID());
-			buf.append("={");
-			for(int i : pair.getValue()){
-				buf.append(i);
-				buf.append(',');
-			}
-			buf.deleteCharAt(buf.length() - 1);
-			buf.append("},");
+			buf.append("=");
+			buf.append(pair.getValue());
+			buf.append(",");
 		}
 		
 		for(int i = 0; i < graph.length; i++){
@@ -167,10 +157,7 @@ public class CanonForm{
 		int vb = (int)Math.ceil(Math.log(graph.length) / Math.log(2));
 		
 		//total required bits
-		int bits = MAX_VERTEX_BITS + vb * 3 + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS;
-		for(int[] lab : labels.values()){
-			bits += lab.length * vb + vb;
-		}
+		int bits = MAX_VERTEX_BITS + vb * 3 + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS + vb * labels.size();
 		
 		bits += graph.length * vb;
 		for(int[] edges : graph){
@@ -184,12 +171,9 @@ public class CanonForm{
 		out.writeInt(target, vb);
 		
 		out.writeInt(labels.size(), MAX_LABEL_BITS);
-		for(Entry<Predicate, int[]> entry : labels.entrySet()){
+		for(Entry<Predicate, Integer> entry : labels.entrySet()){
 			out.writeInt(entry.getKey().getID(), MAX_LABEL_BITS);
-			out.writeInt(entry.getValue().length, vb);
-			for(int v : entry.getValue()){
-				out.writeInt(v, vb);
-			}
+			out.writeInt(entry.getValue(), vb);
 		}
 		
 		for(int[] edges : graph){

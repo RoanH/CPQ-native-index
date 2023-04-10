@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,16 +31,28 @@ public class Main{
 		
 		//TODO
 		
-		try{
-			formatIndex(
-				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_l2h"),
-				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_h2p"),
-				8//DO NOT FORGET TO UPDATE THE LABEL COUNT!!! 2x
-			);
-		}catch(IOException e){
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+//		try{
+//			formatIndex(
+//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_l2h"),
+//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\(aa^bb)(cc^dd)\\chain_k4_h2p"),
+//				8//DO NOT FORGET TO UPDATE THE LABEL COUNT!!! 2x
+//			);
+//		}catch(IOException e){
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		
+		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
+		
+		
+		CanonForm canon = new CanonForm(cpq);
+		System.out.println(canon.toStringCanon());
+		System.out.println(Arrays.toString(canon.toBinaryCanon()));
+		for(byte b : canon.toBinaryCanon()){
+			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
 		}
+		System.out.println();
+		System.out.println(canon.toBase64Canon());
 	}
 	
 	private static void formatIndex(Path lh, Path hp, int lc) throws IOException{
