@@ -157,13 +157,13 @@ public class CanonForm{
 		int vb = (int)Math.ceil(Math.log(graph.length) / Math.log(2));
 		
 		//total required bits
-		int bits = MAX_VERTEX_BITS + vb * 3 + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS + vb * labels.size();
+		int bits = MAX_VERTEX_BITS + vb * 2 + labels.size() * MAX_LABEL_BITS + MAX_LABEL_BITS + vb * labels.size();
 		
 		bits += graph.length * vb;
 		for(int[] edges : graph){
 			bits += edges.length * vb;
 		}
-		
+				
 		//write canonical form
 		BitWriter out = new BitWriter(bits);
 		out.writeInt(graph.length, MAX_VERTEX_BITS);
