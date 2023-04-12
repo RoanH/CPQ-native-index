@@ -101,7 +101,7 @@ public class Index<V extends Comparable<V>>{
 		eq.sort();
 		eq.blocks.forEach(System.out::println);
 		
-		eq.print(9);
+		eq.print();
 		
 		CPQ q = CPQ.labels(l3, l3.getInverse());
 		System.out.println("run: " + q);
@@ -167,31 +167,54 @@ public class Index<V extends Comparable<V>>{
 	 * @param blockWidth The width to allocate for each block column.
 	 * @see #sort()
 	 */
-	public void print(int blockWidth){
-		StringBuilder[] out = new StringBuilder[3 + blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0) + blocks.stream().mapToInt(b->b.labels.size()).max().orElse(0)];
+	public void print(){
+		int maxPath = blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0);
+		int maxLab = blocks.stream().mapToInt(b->b.labels.size()).max().orElse(0);
+		StringBuilder[] out = new StringBuilder[4 + maxPath + maxLab + blocks.stream().mapToInt(b->b.cores.size()).max().orElse(0)];
 		int labStart = 3 + blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0);
+		int coreStart = labStart + 1 + maxLab;
 		for(int i = 0; i < out.length; i++){
 			out[i] = new StringBuilder();
 		}
 		
-		int col = 0;
+		int currentWidth = 0;
 		for(Block block : blocks){
+			int blockWidth = 5;
+			if(currentWidth > 0){
+				for(int i = 0; i < out.length; i++){
+					out[i].append('|');
+				}
+			}
+			
 			out[0].append(block.id);
 			for(int i = 0; i < block.paths.size(); i++){
-				out[i + 2].append(block.paths.get(i));
+				String str = block.paths.get(i).toString();
+				out[i + 2].append(str);
+				blockWidth = Math.max(blockWidth, str.length());
 			}
 			
 			out[labStart - 1].append("-----");
 			for(int i = 0; i < block.labels.size(); i++){
+				int w = 0;
 				for(Predicate p : block.labels.get(i)){
+					String str = p.getAlias();
 					out[labStart + i].append(p.getAlias());
+					w += str.length();
 				}
+				blockWidth = Math.max(blockWidth, w);
 			}
 			
-			col++;
+			out[coreStart - 1].append("-----");
+			for(int i = 0; i < block.cores.size(); i++){
+				String str = block.cores.get(i).toString();
+				out[coreStart + i].append(str);
+				blockWidth = Math.max(blockWidth, str.length());
+			}
+			
+			currentWidth += blockWidth + 2;
 			for(int i = 0; i < out.length; i++){
-				while(out[i].length() < blockWidth * col){
-					out[i].append(' ');
+				while(out[i].length() < currentWidth){
+					out[i].append((out[i].length() == 0 || out[i].charAt(out[i].length() - 1) != '-') ? ' ' : '-');
 				}
 			}
 		}
