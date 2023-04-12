@@ -427,7 +427,7 @@ public class Index<V extends Comparable<V>>{
 				//cores from previous layers
 				for(Block block : inherited){//TODO technically we have a number of uniqueness guarantees here (unique within a block)
 					for(CPQ q : block.cores){
-						String canon = new CanonForm(q).toBase64Canon();
+						String canon = new CanonForm(q).toBase64Canon();//TODO technically already computed and stored in the block
 						if(canonCores.add(canon)){
 							cores.add(q);
 						}
