@@ -137,9 +137,9 @@ public class Index<V extends Comparable<V>>{
 	
 	/**
 	 * Sorts all the list of blocks of this index. There's is no real
-	 * reason to do this other than to make the output of {@link #print(int)}
+	 * reason to do this other than to make the output of {@link #print()}
 	 * more organised.
-	 * @see #print(int)
+	 * @see #print()
 	 */
 	public void sort(){
 		for(Block block : blocks){
@@ -164,7 +164,6 @@ public class Index<V extends Comparable<V>>{
 	
 	/**
 	 * Prints the index to standard output.
-	 * @param blockWidth The width to allocate for each block column.
 	 * @see #sort()
 	 */
 	public void print(){
