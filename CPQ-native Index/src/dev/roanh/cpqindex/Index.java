@@ -146,7 +146,7 @@ public class Index<V extends Comparable<V>>{
 	 */
 	public void sort(){
 		for(Block block : blocks){
-			block.paths.sort(this::sortPairs);
+			block.paths.sort(null);
 			block.labels.sort((a, b)->{
 				int c = Integer.compare(a.size(), b.size());
 				if(c == 0){
@@ -162,7 +162,7 @@ public class Index<V extends Comparable<V>>{
 			});
 		}
 		
-		blocks.sort(Comparator.comparing(b->b.paths.get(0), this::sortPairs));
+		blocks.sort(Comparator.comparing(b->b.paths.get(0)));
 	}
 	
 	/**
@@ -361,50 +361,23 @@ public class Index<V extends Comparable<V>>{
 		return segments;
 	}
 	
-	private int sortPairs(Pair a, Pair b){
-		int c = a.getSource().compareTo(b.getSource());
-		if(c == 0){
-			c = a.getTarget().compareTo(b.getTarget());
+	private int sortPaths(LabelledPath a, LabelledPath b){
+		int cmp = a.compareSegmentsTo(b);
+		if(cmp != 0){
+			return cmp;
 		}
 
-		return c;
-	}
-	
-	private int sortPaths(LabelledPath a, LabelledPath b){
-//		if(a.equalSegments(b)){
-//			if(a.isLoop() && b.isLoop()){
-//				return a.hashCode() - b.hashCode();
-//			}else if(a.isLoop()){
-//				return 1;
-//			}else if(b.isLoop()){
-//				return -1;
-//			}else if(a.pair.src.compareTo(b.pair.src) < 0){
-//				return 1;
-//			}else if(a.pair.src.equals(b.pair.src) && a.pair.trg.compareTo(b.pair.trg) < 0){
-//				return 1;
-//			}else{
-//				return -1;
-//			}
-//			
-			int cmp = a.compareSegmentsTo(b);
-			if(cmp != 0){
-				return cmp;
-			}
-		
-			cmp = Boolean.compare(a.isLoop(), b.isLoop());
-			if(cmp != 0){
-				return cmp;
-			}
-			
-			cmp = a.pair.src.compareTo(b.pair.src);
-			if(cmp != 0){
-				return cmp;
-			}
-			
-			return a.pair.trg.compareTo(b.pair.trg);
-//		}else{
-//			return a.segs.hashCode() - b.segs.hashCode();
-//		}
+		cmp = Boolean.compare(a.isLoop(), b.isLoop());
+		if(cmp != 0){
+			return cmp;
+		}
+
+		cmp = a.pair.src.compareTo(b.pair.src);
+		if(cmp != 0){
+			return cmp;
+		}
+
+		return a.pair.trg.compareTo(b.pair.trg);
 	}
 	
 	private int sortOnePath(LabelledPath a, LabelledPath b){
@@ -696,7 +669,7 @@ public class Index<V extends Comparable<V>>{
 	 * path or an st-pair.
 	 * @author Roan
 	 */
-	public final class Pair{
+	public final class Pair implements Comparable<Pair>{
 		/**
 		 * The source vertex.
 		 */
@@ -759,6 +732,12 @@ public class Index<V extends Comparable<V>>{
 		@Override
 		public String toString(){
 			return "(" + src + "," + trg + ")";
+		}
+
+		@Override
+		public int compareTo(Pair o){
+			int cmp = src.compareTo(o.src);
+			return cmp == 0 ? trg.compareTo(o.trg) : cmp;
 		}
 	}
 }
