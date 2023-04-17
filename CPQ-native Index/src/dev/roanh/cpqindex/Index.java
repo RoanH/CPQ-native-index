@@ -147,19 +147,7 @@ public class Index<V extends Comparable<V>>{
 	public void sort(){
 		for(Block block : blocks){
 			block.paths.sort(null);
-			block.labels.sort((a, b)->{
-				int c = Integer.compare(a.size(), b.size());
-				if(c == 0){
-					for(int i = 0; i < a.size(); i++){
-						c = a.get(i).compareTo(b.get(i));
-						if(c != 0){
-							return c;
-						}
-					}
-				}
-				
-				return 0;
-			});
+			block.labels.sort(null);
 		}
 		
 		blocks.sort(Comparator.comparing(b->b.paths.get(0)));
@@ -198,7 +186,7 @@ public class Index<V extends Comparable<V>>{
 			out[labStart - 1].append("-----");
 			for(int i = 0; i < block.labels.size(); i++){
 				int w = 0;
-				for(Predicate p : block.labels.get(i)){
+				for(Predicate p : block.labels.get(i).getLabels()){
 					String str = p.getAlias();
 					out[labStart + i].append(p.getAlias());
 					w += str.length();
@@ -235,7 +223,9 @@ public class Index<V extends Comparable<V>>{
 	}
 	
 	private void computeBlocks(RangeList<List<LabelledPath>> segments){
-		Map<Pair, Block> pairMap = new HashMap<Pair, Block>();
+//		Map<Pair, Block> pairMap = new HashMap<Pair, Block>();
+//		Set<Pair> unused = new HashSet<Pair>();
+		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
 		
 		for(int j = 0; j < k; j++){
 			List<LabelledPath> segs = segments.get(j);
@@ -246,21 +236,26 @@ public class Index<V extends Comparable<V>>{
 					List<LabelledPath> slice = segs.subList(start, i);
 					
 					List<Block> inherited = new ArrayList<Block>();
-					if(j > 0){
-						for(LabelledPath path : slice){
-							Block b = pairMap.remove(path.pair);
-							if(b != null){
-								inherited.add(b);
-							}
-						}
-					}
+//					if(j > 0){//TODO
+//						for(LabelledPath path : slice){
+//							Block b = pairMap.remove(path.pair);
+//							if(b != null){
+//								inherited.add(b);
+//							}
+//						}
+//					}
 					
 					Block block = new Block(slice, inherited);
 					if(j != k - 1){
-						for(Pair pair : block.paths){
-							pairMap.put(pair, block);
+						for(LabelledPath path : slice){
+//							pairMap.put(pair, block);
+							unused.put(path.pair, path);
 						}
 					}else{
+						for(Pair pair : block.paths){
+//							pairMap.put(pair, block);
+							unused.remove(pair);
+						}
 						blocks.add(block);
 					}
 					
@@ -273,7 +268,30 @@ public class Index<V extends Comparable<V>>{
 		}
 		
 		//any remaining pairs denote unused blocks
-		pairMap.values().stream().distinct().forEach(blocks::add);
+//		unused.forEach(blocks::add);
+//		unused.values().stream().distinct().forEach(blocks::add);//TODO
+//		pairMap.values().stream().distinct().forEach(blocks::add);//TODO
+		
+		List<LabelledPath> remaining = unused.values().stream().sorted(Comparator.comparing(l->l.segId)).collect(Collectors.toList());
+
+		if(!remaining.isEmpty()){
+			int start = 0;
+			int lastId = remaining.get(0).segId;
+			for(int i = 0; i <= remaining.size(); i++){
+				if(i == remaining.size() || remaining.get(i).segId != lastId){
+					List<LabelledPath> slice = remaining.subList(start, i);
+
+
+					Block block = new Block(slice, Collections.EMPTY_LIST);
+					blocks.add(block);
+
+					if(i != remaining.size()){
+						lastId = remaining.get(i).segId;
+						start = i;
+					}
+				}
+			}
+		}
 	}
 	
 	//partition according to k-path-bisimulation
@@ -283,18 +301,26 @@ public class Index<V extends Comparable<V>>{
 		}
 		
 		RangeList<List<LabelledPath>> segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
+		Map<Pair, LabelledPath> history = new HashMap<Pair, LabelledPath>();
 		
 		//classes for 1-path-bisimulation
 		Map<Pair, LabelledPath> pathMap = new HashMap<Pair, LabelledPath>();
 		for(GraphEdge<V, Predicate> edge : g.getEdges()){
 			//forward and backward edges are just the labels on those edges
-			pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), LabelledPath::new).addLabel(edge.getData());
-			pathMap.computeIfAbsent(new Pair(edge.getTarget(), edge.getSource()), LabelledPath::new).addLabel(edge.getData().getInverse());
+			LabelledPath path = pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), p->new LabelledPath(p, null));
+			path.addLabel(edge.getData());
+			history.put(path.pair, path);
+			
+			path = pathMap.computeIfAbsent(new Pair(edge.getTarget(), edge.getSource()), p->new LabelledPath(p, null));
+			path.addLabel(edge.getData().getInverse());
+			history.put(path.pair, path);
 		}
 		
 		//sort 1-path
+		System.out.println("Start sort: 1");
 		List<LabelledPath> segOne = segments.get(0);
 		pathMap.values().stream().sorted(this::sortOnePath).forEachOrdered(segOne::add);
+		System.out.println("end sort");
 		
 		//assign block IDs
 		LabelledPath prev = null;
@@ -324,12 +350,16 @@ public class Index<V extends Comparable<V>>{
 						}
 						
 						Pair key = new Pair(seg.pair.src, end.pair.trg);
-						LabelledPath path = pathMap.computeIfAbsent(key, LabelledPath::new);
+						LabelledPath path = pathMap.computeIfAbsent(key, p->{
+							LabelledPath newPath = new LabelledPath(p, history.get(p));
+							history.put(p, newPath);
+							return newPath;
+						});
 						
 						path.addSegment(seg, end);
 						if(k2 == 0){//slight optimisation, since we only need one combination to find all paths
-							for(List<Predicate> labels : seg.labels){
-								for(List<Predicate> label : end.labels){
+							for(LabelSequence labels : seg.labels){//TODO, do we even need to do this?
+								for(LabelSequence label : end.labels){
 									path.addLabel(labels, label);
 								}
 							}
@@ -337,7 +367,7 @@ public class Index<V extends Comparable<V>>{
 					}
 				}
 			}
-
+			
 			//sort
 			System.out.println("Start sort: " + (i + 1));
 			List<LabelledPath> segs = segments.get(i);
@@ -372,36 +402,27 @@ public class Index<V extends Comparable<V>>{
 			return cmp;
 		}
 
-		cmp = a.pair.src.compareTo(b.pair.src);
+		return a.pair.compareTo(b.pair);
+	}
+	
+	private int sortOnePath(LabelledPath a, LabelledPath b){
+		int cmp = a.compareLabelsTo(b);
+		if(cmp != 0){
+			return cmp;
+		}
+		
+		cmp = Boolean.compare(a.isLoop(), b.isLoop());
 		if(cmp != 0){
 			return cmp;
 		}
 
-		return a.pair.trg.compareTo(b.pair.trg);
-	}
-	
-	private int sortOnePath(LabelledPath a, LabelledPath b){
-		if(a.labels.equals(b.labels)){
-			if(a.isLoop()){
-				return 1;
-			}else if(b.isLoop()){
-				return -1;
-			}else if(a.pair.src.compareTo(b.pair.src) < 0){
-				return 1;
-			}else if(a.pair.src.equals(b.pair.src) && a.pair.trg.compareTo(b.pair.trg) < 0){
-				return 1;
-			}else{
-				return -1;
-			}
-		}else{
-			return a.labels.hashCode() - b.labels.hashCode();
-		}
+		return a.pair.compareTo(b.pair);
 	}
 	
 	public final class Block{
 		private final int id;
 		private List<Pair> paths;
-		private List<List<Predicate>> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use
+		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use
 		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically only need #canonCores, but this is good for debugging
 		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug
 		
@@ -412,8 +433,13 @@ public class Index<V extends Comparable<V>>{
 			slice.forEach(s->s.block = this);
 			
 			//labels inherited from previous layer blocks
-			for(Block block : inherited){
-				labels.addAll(block.labels);
+//			for(Block block : inherited){
+//				labels.addAll(block.labels);
+//			}//TODO
+			LabelledPath parent = slice.get(0);
+			while(parent.ancestor != null){
+				parent = parent.ancestor;
+				labels.addAll(parent.labels);
 			}
 			
 			if(computeCores){
@@ -425,7 +451,7 @@ public class Index<V extends Comparable<V>>{
 			return paths;
 		}
 		
-		public List<List<Predicate>> getLabels(){
+		public List<LabelSequence> getLabels(){
 			return labels;
 		}
 		
@@ -435,7 +461,7 @@ public class Index<V extends Comparable<V>>{
 		
 		private void computeCores(Set<PathPair> segs, List<Block> inherited){
 			if(segs.isEmpty()){
-				labels.stream().map(CPQ::labels).forEach(q->{
+				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).forEach(q->{
 					String canon = new CanonForm(q).toBase64Canon();
 					if(canonCores.add(canon)){
 						cores.add(q);
@@ -494,8 +520,8 @@ public class Index<V extends Comparable<V>>{
 			builder.append(",paths=");
 			builder.append(paths);
 			builder.append(",labels={");
-			for(List<Predicate> seq : labels){
-				for(Predicate p : seq){
+			for(LabelSequence seq : labels){
+				for(Predicate p : seq.getLabels()){
 					builder.append(p.getAlias());
 				}
 				builder.append(",");
@@ -539,18 +565,6 @@ public class Index<V extends Comparable<V>>{
 			this.second = second;
 		}
 		
-		/**
-		 * Tests of this path pair is equal to another path pair
-		 * based on the segment IDs assigned to the stored paths.
-		 * @param other The other path pair to test against.
-		 * @return True if this path pair has segment IDs equal
-		 *         to the given path pair.
-		 * @see LabelledPath#segId
-		 */
-		private boolean equalSegId(PathPair other){
-			return compareTo(other) == 0;
-		}
-		
 		@Override
 		public boolean equals(Object obj){
 			if(obj instanceof Index<?>.PathPair){
@@ -589,23 +603,51 @@ public class Index<V extends Comparable<V>>{
 		 * The label sequences that were found that exist between
 		 * the vertices of the node pair for this path.
 		 */
-		private Set<List<Predicate>> labels = new HashSet<List<Predicate>>();
+		private SortedSet<LabelSequence> labels = new TreeSet<LabelSequence>();
 		
 		//id stuff
 		private int segId;
 		private Block block;
 		
 		private SortedSet<PathPair> segs = new TreeSet<PathPair>();//effectively a history of blocks that were combined to form this path
+		private LabelledPath ancestor;
 		
-		private LabelledPath(Pair pair){
+		private LabelledPath(Pair pair, LabelledPath ancestor){
 			this.pair = pair;
+			this.ancestor = ancestor;
 		}
 		
+		//TODO double check private/public of everything
+		
+//		private void setAncestor(LabelledPath ancestor){
+//			this.ancestor = ancestor;
+//		}
+		
+		public int compareLabelsTo(LabelledPath other){
+			return compare(labels, other.labels);
+		}
+
 		public int compareSegmentsTo(LabelledPath other){
-			int cmp = Integer.compare(segs.size(), other.segs.size());
+			int cmp = Boolean.compare(ancestor == null, other.ancestor == null);
+			if(cmp != 0){
+				return cmp;
+			}
+			
+			if(ancestor != null){
+				cmp = Integer.compare(ancestor.segId, other.ancestor.segId);
+				if(cmp != 0){
+					return cmp;
+				}
+			}
+			
+			return compare(segs, other.segs);
+		}
+		
+		public <T extends Comparable<T>> int compare(SortedSet<T> a, SortedSet<T> b){
+			int cmp = Integer.compare(a.size(), b.size());
 			if(cmp == 0){
-				Iterator<PathPair> iter = other.segs.iterator();
-				for(PathPair seg : segs){
+				Iterator<T> iter = b.iterator();
+				for(T seg : a){
 					cmp = seg.compareTo(iter.next());
 					if(cmp != 0){
 						return cmp;
@@ -623,14 +665,11 @@ public class Index<V extends Comparable<V>>{
 		}
 		
 		public void addLabel(Predicate label){
-			labels.add(Arrays.asList(label));
+			labels.add(new LabelSequence(label));
 		}
 		
-		public void addLabel(List<Predicate> first, List<Predicate> last){
-			List<Predicate> path = new ArrayList<Predicate>(first.size() + last.size());
-			path.addAll(first);
-			path.addAll(last);
-			labels.add(path);
+		public void addLabel(LabelSequence first, LabelSequence last){
+			labels.add(new LabelSequence(first, last));
 		}
 		
 		public boolean isLoop(){
@@ -645,8 +684,8 @@ public class Index<V extends Comparable<V>>{
 			builder.append(",path=");
 			builder.append(pair);
 			builder.append(",labels={");
-			for(List<Predicate> seq : labels){
-				for(Predicate p : seq){
+			for(LabelSequence seq : labels){
+				for(Predicate p : seq.getLabels()){
 					builder.append(p.getAlias());
 				}
 				builder.append(",");
@@ -661,6 +700,51 @@ public class Index<V extends Comparable<V>>{
 			builder.append("}]");
 			builder.append("}]");
 			return builder.toString();
+		}
+	}
+	
+	public final class LabelSequence implements Comparable<LabelSequence>{
+		private Predicate[] data;
+		
+		public LabelSequence(LabelSequence first, LabelSequence last){
+			data = new Predicate[first.data.length + last.data.length];
+			System.arraycopy(first.data, 0, data, 0, first.data.length);
+			System.arraycopy(last.data, 0, data, first.data.length, last.data.length);
+		}
+
+		public LabelSequence(Predicate label){
+			data = new Predicate[]{label};
+		}
+		
+		public Predicate[] getLabels(){
+			return data;
+		}
+
+		@Override
+		public int compareTo(LabelSequence o){
+			int cmp = Integer.compare(data.length, o.data.length);
+			if(cmp == 0){
+				for(int i = 0; i < data.length; i++){
+					cmp = data[i].compareTo(o.data[i]);
+					if(cmp != 0){
+						return cmp;
+					}
+				}
+				
+				return 0;
+			}else{
+				return cmp;
+			}
+		}
+		
+		@Override
+		public int hashCode(){
+			return Arrays.hashCode(data);
+		}
+		
+		@Override
+		public boolean equals(Object obj){
+			return obj instanceof Index<?>.LabelSequence ? Arrays.equals(data, ((Index<?>.LabelSequence)obj).data) : false;
 		}
 	}
 	
