@@ -1,6 +1,7 @@
 package dev.roanh.cpqindex;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,8 +9,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
@@ -17,6 +20,8 @@ import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.GraphPanel;
 import dev.roanh.gmark.util.UniqueGraph;
+import dev.roanh.gmark.util.UniqueGraph.GraphNode;
+import dev.roanh.gmark.util.Util;
 
 public class Main{
 
@@ -42,17 +47,64 @@ public class Main{
 //			e.printStackTrace();
 //		}
 		
-		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
+//		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
+//		
+//		
+//		CanonForm canon = new CanonForm(cpq);
+//		System.out.println(canon.toStringCanon());
+//		System.out.println(Arrays.toString(canon.toBinaryCanon()));
+//		for(byte b : canon.toBinaryCanon()){
+//			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
+//		}
+//		System.out.println();
+//		System.out.println(canon.toBase64Canon());
 		
 		
-		CanonForm canon = new CanonForm(cpq);
-		System.out.println(canon.toStringCanon());
-		System.out.println(Arrays.toString(canon.toBinaryCanon()));
-		for(byte b : canon.toBinaryCanon()){
-			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
+		try{
+			Index<Integer> index = new Index<Integer>(readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true);
+			System.out.println("done");
+			
+			
+		
+		}catch(IllegalArgumentException | IOException e){
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		System.out.println();
-		System.out.println(canon.toBase64Canon());
+	}
+	
+	private static UniqueGraph<Integer, Predicate> readGraph(Path file) throws IOException{
+		try(Stream<String> stream = Files.lines(file, StandardCharsets.UTF_8)){
+			Iterator<String> iter = stream.iterator();
+			String[] meta = iter.next().split(" ");
+			int vertices = Integer.parseInt(meta[0]);
+			int labelCount = Integer.parseInt(meta[2]);
+			List<Predicate> labels = Util.generateLabels(labelCount);
+			
+			UniqueGraph<Integer, Predicate> graph = new UniqueGraph<Integer, Predicate>();
+			for(int i = 0; i < vertices; i++){
+				graph.addUniqueNode(i);
+			}
+			
+			GraphNode<Integer, Predicate> last = null;
+			while(iter.hasNext()){
+				String[] args = iter.next().split(" ");
+				if(args.length == 0){
+					break;
+				}
+				
+				int src = Integer.parseInt(args[0]);
+				int trg = Integer.parseInt(args[1]);
+				int lab = Integer.parseInt(args[2]);
+				
+				if(last == null || last.getID() != src){
+					last = graph.getNode(src);
+				}
+				
+				last.addUniqueEdgeTo(trg, labels.get(lab));
+			}
+			
+			return graph;
+		}
 	}
 	
 	private static void formatIndex(Path lh, Path hp, int lc) throws IOException{
