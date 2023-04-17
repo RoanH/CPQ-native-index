@@ -7,11 +7,14 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.core.graph.Predicate;
@@ -336,13 +339,16 @@ public class Index<V extends Comparable<V>>{
 			}
 
 			//sort
+			System.out.println("Start sort: " + (i + 1));
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
+//			pathMap.values().stream().sorted((a,b)->sortPaths(b, a)).forEachOrdered(segs::add);
+			System.out.println("end sort");
 
 			//assign IDs
 			prev = null;
 			for(LabelledPath path : segs){
-				if(prev != null && (!path.equalSegments(prev) || prev.isLoop() ^ path.isLoop())){
+				if(prev != null && (path.compareSegmentsTo(prev) != 0 || prev.isLoop() ^ path.isLoop())){
 					//increase id if loop status or segments differs
 					id++;
 				}
@@ -365,23 +371,40 @@ public class Index<V extends Comparable<V>>{
 	}
 	
 	private int sortPaths(LabelledPath a, LabelledPath b){
-		if(a.equalSegments(b)){
-			if(a.isLoop() && b.isLoop()){
-				return a.hashCode() - b.hashCode();
-			}else if(a.isLoop()){
-				return 1;
-			}else if(b.isLoop()){
-				return -1;
-			}else if(a.pair.src.compareTo(b.pair.src) < 0){
-				return 1;
-			}else if(a.pair.src.equals(b.pair.src) && a.pair.trg.compareTo(b.pair.trg) < 0){
-				return 1;
-			}else{
-				return -1;
+//		if(a.equalSegments(b)){
+//			if(a.isLoop() && b.isLoop()){
+//				return a.hashCode() - b.hashCode();
+//			}else if(a.isLoop()){
+//				return 1;
+//			}else if(b.isLoop()){
+//				return -1;
+//			}else if(a.pair.src.compareTo(b.pair.src) < 0){
+//				return 1;
+//			}else if(a.pair.src.equals(b.pair.src) && a.pair.trg.compareTo(b.pair.trg) < 0){
+//				return 1;
+//			}else{
+//				return -1;
+//			}
+//			
+			int cmp = a.compareSegmentsTo(b);
+			if(cmp != 0){
+				return cmp;
 			}
-		}else{
-			return a.segs.hashCode() - b.segs.hashCode();
-		}
+		
+			cmp = Boolean.compare(a.isLoop(), b.isLoop());
+			if(cmp != 0){
+				return cmp;
+			}
+			
+			cmp = a.pair.src.compareTo(b.pair.src);
+			if(cmp != 0){
+				return cmp;
+			}
+			
+			return a.pair.trg.compareTo(b.pair.trg);
+//		}else{
+//			return a.segs.hashCode() - b.segs.hashCode();
+//		}
 	}
 	
 	private int sortOnePath(LabelledPath a, LabelledPath b){
@@ -523,7 +546,7 @@ public class Index<V extends Comparable<V>>{
 	 * that were joined to form a new path.
 	 * @author Roan
 	 */
-	private final class PathPair{
+	private final class PathPair implements Comparable<PathPair>{
 		/**
 		 * The first path of this pair, also the start of the joined path.
 		 */
@@ -552,7 +575,7 @@ public class Index<V extends Comparable<V>>{
 		 * @see LabelledPath#segId
 		 */
 		private boolean equalSegId(PathPair other){
-			return first.segId == other.first.segId && second.segId == other.second.segId;
+			return compareTo(other) == 0;
 		}
 		
 		@Override
@@ -568,6 +591,12 @@ public class Index<V extends Comparable<V>>{
 		@Override
 		public int hashCode(){
 			return Objects.hash(first, second);
+		}
+
+		@Override
+		public int compareTo(PathPair o){
+			int cmp = Integer.compare(first.segId, o.first.segId);
+			return cmp == 0 ? Integer.compare(second.segId, o.second.segId) : cmp;
 		}
 	}
 	
@@ -593,24 +622,27 @@ public class Index<V extends Comparable<V>>{
 		private int segId;
 		private Block block;
 		
-		private Set<PathPair> segs = new HashSet<PathPair>();//effectively a history of blocks that were combined to form this path
+		private SortedSet<PathPair> segs = new TreeSet<PathPair>();//effectively a history of blocks that were combined to form this path
 		
 		private LabelledPath(Pair pair){
 			this.pair = pair;
 		}
 		
-		public boolean equalSegments(LabelledPath other){
-			main: for(Index<V>.PathPair seg : segs){
-				for(Index<V>.PathPair test : other.segs){
-					if(seg.equalSegId(test)){
-						continue main;
+		public int compareSegmentsTo(LabelledPath other){
+			int cmp = Integer.compare(segs.size(), other.segs.size());
+			if(cmp == 0){
+				Iterator<PathPair> iter = other.segs.iterator();
+				for(PathPair seg : segs){
+					cmp = seg.compareTo(iter.next());
+					if(cmp != 0){
+						return cmp;
 					}
 				}
 				
-				return false;
+				return 0;
+			}else{
+				return cmp;
 			}
-			
-			return true;
 		}
 		
 		public void addSegment(LabelledPath first, LabelledPath last){
