@@ -39,6 +39,8 @@ public class Index<V extends Comparable<V>>{
 	private List<Block> blocks = new ArrayList<Block>();
 	private Map<String, List<Block>> coreToBlock = new HashMap<String, List<Block>>();
 	
+	//TODO double check private/public of everything
+	
 	public static void main(String[] args){
 		try{
 			Main.loadNatives();
@@ -134,6 +136,10 @@ public class Index<V extends Comparable<V>>{
 		return coreToBlock.getOrDefault(key, Collections.emptyList()).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
 	}
 	
+	/**
+	 * Gets all the blocks in this index.
+	 * @return All the blocks in this index.
+	 */
 	public List<Block> getBlocks(){
 		return blocks;
 	}
@@ -223,8 +229,6 @@ public class Index<V extends Comparable<V>>{
 	}
 	
 	private void computeBlocks(RangeList<List<LabelledPath>> segments){
-//		Map<Pair, Block> pairMap = new HashMap<Pair, Block>();
-//		Set<Pair> unused = new HashSet<Pair>();
 		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
 		
 		for(int j = 0; j < k; j++){
@@ -248,12 +252,10 @@ public class Index<V extends Comparable<V>>{
 					Block block = new Block(slice, inherited);
 					if(j != k - 1){
 						for(LabelledPath path : slice){
-//							pairMap.put(pair, block);
 							unused.put(path.pair, path);
 						}
 					}else{
 						for(Pair pair : block.paths){
-//							pairMap.put(pair, block);
 							unused.remove(pair);
 						}
 						blocks.add(block);
@@ -267,24 +269,14 @@ public class Index<V extends Comparable<V>>{
 			}
 		}
 		
-		//any remaining pairs denote unused blocks
-//		unused.forEach(blocks::add);
-//		unused.values().stream().distinct().forEach(blocks::add);//TODO
-//		pairMap.values().stream().distinct().forEach(blocks::add);//TODO
-		
+		//any remaining pairs denote blocks from previous layers
 		List<LabelledPath> remaining = unused.values().stream().sorted(Comparator.comparing(l->l.segId)).collect(Collectors.toList());
-
 		if(!remaining.isEmpty()){
 			int start = 0;
 			int lastId = remaining.get(0).segId;
 			for(int i = 0; i <= remaining.size(); i++){
 				if(i == remaining.size() || remaining.get(i).segId != lastId){
-					List<LabelledPath> slice = remaining.subList(start, i);
-
-
-					Block block = new Block(slice, Collections.EMPTY_LIST);
-					blocks.add(block);
-
+					blocks.add(new Block(remaining.subList(start, i), Collections.EMPTY_LIST));
 					if(i != remaining.size()){
 						lastId = remaining.get(i).segId;
 						start = i;
@@ -372,7 +364,6 @@ public class Index<V extends Comparable<V>>{
 			System.out.println("Start sort: " + (i + 1));
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
-//			pathMap.values().stream().sorted((a,b)->sortPaths(b, a)).forEachOrdered(segs::add);
 			System.out.println("end sort");
 
 			//assign IDs
@@ -433,13 +424,10 @@ public class Index<V extends Comparable<V>>{
 			slice.forEach(s->s.block = this);
 			
 			//labels inherited from previous layer blocks
-//			for(Block block : inherited){
-//				labels.addAll(block.labels);
-//			}//TODO
 			LabelledPath parent = slice.get(0);
 			while(parent.ancestor != null){
 				parent = parent.ancestor;
-				labels.addAll(parent.labels);
+				labels.addAll(parent.labels);//TODO no need for labels when only computing cores (unless layer 1 but layer 1 has no ancestors anyway
 			}
 			
 			if(computeCores){
@@ -616,12 +604,6 @@ public class Index<V extends Comparable<V>>{
 			this.pair = pair;
 			this.ancestor = ancestor;
 		}
-		
-		//TODO double check private/public of everything
-		
-//		private void setAncestor(LabelledPath ancestor){
-//			this.ancestor = ancestor;
-//		}
 		
 		public int compareLabelsTo(LabelledPath other){
 			return compare(labels, other.labels);

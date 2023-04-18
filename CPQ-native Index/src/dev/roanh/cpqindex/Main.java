@@ -88,6 +88,7 @@ public class Main{
 		//(115,160): [0⁻0, 0⁻2]
 		//(115,160), (980,160), (1175,160), (1283,160), (1360,160), (1434,160), (1436,160), (1438,160), (1439,160), (1440,160), (1441,160), (1442,160), (1443,160), (1444,160), (1445,160), (1446,160), (1447,160), (1448,160), (1449,160), (1450,160): [0⁻0, 0⁻2]
 
+		//7721 - 7728
 		
 		try{
 			Instant start = Instant.now();
@@ -96,27 +97,27 @@ public class Main{
 			
 			index.sort();
 			
-			BufferedWriter w = Files.newBufferedWriter(Paths.get("myindex_test.txt"));
-			for(Index<Integer>.Block block : index.getBlocks()){
-				String head = block.getPaths().toString();
-				w.append(head.substring(1, head.length() - 1));
-				w.append(": ");
-//				for(Index<Integer>.LabelSequence s : block.getLabels()){
-//					for(Predicate p : s.getLabels()){
-//						w.append(p.getAlias());
+//			BufferedWriter w = Files.newBufferedWriter(Paths.get("myindex_test.txt"));
+//			for(Index<Integer>.Block block : index.getBlocks()){
+//				String head = block.getPaths().toString();
+//				w.append(head.substring(1, head.length() - 1));
+//				w.append(": ");
+////				for(Index<Integer>.LabelSequence s : block.getLabels()){
+////					for(Predicate p : s.getLabels()){
+////						w.append(p.getAlias());
+////					}
+////				}
+//				w.append(block.getLabels().stream().map(ls->{
+//					String str = "";
+//					for(Predicate p : ls.getLabels()){
+//						str += p.getAlias();
 //					}
-//				}
-				w.append(block.getLabels().stream().map(ls->{
-					String str = "";
-					for(Predicate p : ls.getLabels()){
-						str += p.getAlias();
-					}
-					return str;
-				}).collect(Collectors.toList()).toString());
-				w.newLine();
-			}
-			w.flush();
-			w.close();
+//					return str;
+//				}).collect(Collectors.toList()).toString());
+//				w.newLine();
+//			}
+//			w.flush();
+//			w.close();
 		
 		}catch(IllegalArgumentException | IOException e){
 			// TODO Auto-generated catch block
