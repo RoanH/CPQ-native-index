@@ -101,4 +101,14 @@ compile:
     paths:
       - ${PROJECTNAME}-*.jar
 
+test:
+  script:
+    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :test :jacocoTestReport
+    - cat ./build/reports/jacoco/test/html/index.html
+  stage: test
+  coverage: '/Total.*?([0-9]{1,3})%/'
+  artifacts:
+    reports:
+      junit: ./${PROJECTNAME}/build/test-results/test/TEST-*.xml
+
 #TODO docker?
