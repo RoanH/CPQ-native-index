@@ -104,6 +104,9 @@ compile:
 
 test:
   script:
+    - cd lib
+    - wget http://192.168.2.24:100/lib/gmark.jar
+    - cd ..
     - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :test :jacocoTestReport
     - cat ./build/reports/jacoco/test/html/index.html
   stage: test
