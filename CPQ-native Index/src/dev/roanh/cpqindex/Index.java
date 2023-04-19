@@ -238,18 +238,8 @@ public class Index<V extends Comparable<V>>{
 			for(int i = 0; i <= segs.size(); i++){
 				if(i == segs.size() || segs.get(i).segId != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
+					Block block = new Block(slice);
 					
-					List<Block> inherited = new ArrayList<Block>();
-//					if(j > 0){//TODO
-//						for(LabelledPath path : slice){
-//							Block b = pairMap.remove(path.pair);
-//							if(b != null){
-//								inherited.add(b);
-//							}
-//						}
-//					}
-					
-					Block block = new Block(slice, inherited);
 					if(j != k - 1){
 						for(LabelledPath path : slice){
 							unused.put(path.pair, path);
@@ -276,7 +266,7 @@ public class Index<V extends Comparable<V>>{
 			int lastId = remaining.get(0).segId;
 			for(int i = 0; i <= remaining.size(); i++){
 				if(i == remaining.size() || remaining.get(i).segId != lastId){
-					blocks.add(new Block(remaining.subList(start, i), Collections.EMPTY_LIST));
+					blocks.add(new Block(remaining.subList(start, i)));
 					if(i != remaining.size()){
 						lastId = remaining.get(i).segId;
 						start = i;
@@ -417,21 +407,25 @@ public class Index<V extends Comparable<V>>{
 		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically only need #canonCores, but this is good for debugging
 		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug
 		
-		private Block(List<LabelledPath> slice, List<Block> inherited){
+		private Block(List<LabelledPath> slice){
 			id = slice.get(0).segId;
 			labels = slice.get(0).labels.stream().collect(Collectors.toList());
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
 			slice.forEach(s->s.block = this);
 			
-			//labels inherited from previous layer blocks
+			//inherited from previous layer blocks
 			LabelledPath parent = slice.get(0);
 			while(parent.ancestor != null){
 				parent = parent.ancestor;
 				labels.addAll(parent.labels);//TODO no need for labels when only computing cores (unless layer 1 but layer 1 has no ancestors anyway
+				
+				//these are by definition of a different diameter
+				cores.addAll(parent.block.cores);
+				canonCores.addAll(parent.block.canonCores);
 			}
 			
 			if(computeCores){
-				computeCores(slice.get(0).segs, inherited);
+				computeCores(slice.get(0).segs);
 			}
 		}
 		
@@ -447,47 +441,31 @@ public class Index<V extends Comparable<V>>{
 			return paths.get(0).isLoop();
 		}
 		
-		private void computeCores(Set<PathPair> segs, List<Block> inherited){
+		private void addCore(CPQ q){
+			if(canonCores.add(new CanonForm(q).toBase64Canon())){//TODO use byte[]
+				cores.add(q);
+			}
+		}
+		
+		private void computeCores(Set<PathPair> segs){
 			if(segs.isEmpty()){
-				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).forEach(q->{
-					String canon = new CanonForm(q).toBase64Canon();
-					if(canonCores.add(canon)){
-						cores.add(q);
-					}
-				});
+				//TODO technically these were already computed -- here or elsewhere?
+				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).forEach(this::addCore);
 			}else{
-				//cores from previous layers
-				for(Block block : inherited){//TODO technically we have a number of uniqueness guarantees here (unique within a block)
-					for(CPQ q : block.cores){
-						String canon = new CanonForm(q).toBase64Canon();//TODO technically already computed and stored in the block
-						if(canonCores.add(canon)){
-							cores.add(q);
-						}
-					}
-				}
-				
 				//all combinations of cores from previous layers
 				for(PathPair pair : segs){
 					for(CPQ core1 : pair.first.block.cores){
 						for(CPQ core2 : pair.second.block.cores){
-							CPQ q = CPQ.concat(core1, core2);
-							String canon = new CanonForm(q).toBase64Canon();
-							if(canonCores.add(canon)){
-								cores.add(q);
-							}
+							addCore(CPQ.concat(core1, core2));
 						}
 					}
 				}
 			}
 			
 			//all intersections of cores
-			Util.computeAllSubsets(cores, set->{
+			Util.computeAllSubsets(cores, set->{//TODO could limit max set size
 				if(set.size() >= 2){
-					CPQ q = CPQ.intersect(set);
-					String canon = new CanonForm(q).toBase64Canon();
-					if(canonCores.add(canon)){
-						cores.add(q);
-					}
+					addCore(CPQ.intersect(set));
 				}
 			});
 			
@@ -495,7 +473,7 @@ public class Index<V extends Comparable<V>>{
 			if(isLoop()){
 				final int max = cores.size();
 				for(int i = 0; i < max; i++){
-					cores.add(CPQ.intersect(cores.get(i), CPQ.id()));
+					addCore(CPQ.intersect(cores.get(i), CPQ.id()));
 				}
 			}
 		}
