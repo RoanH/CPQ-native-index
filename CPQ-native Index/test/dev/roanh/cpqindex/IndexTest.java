@@ -1,19 +1,14 @@
 package dev.roanh.cpqindex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import dev.roanh.gmark.core.graph.Predicate;
@@ -21,42 +16,36 @@ import dev.roanh.gmark.util.UniqueGraph;
 
 public class IndexTest{
 	
-	@Disabled//TODO
 	@Test
-	public void robots() throws IOException, ClassNotFoundException{
-		UniqueGraph<Integer, Predicate> graph = Main.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge"));
+	public void robotsK2() throws IOException, ClassNotFoundException{
+		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
+		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
 		Index<Integer> index = new Index<Integer>(graph, 2, false);
 		index.sort();
 		
-		ObjectInputStream obsout = new ObjectInputStream(new FileInputStream(new File("robots.bin")));
-		List<Entry<List<String>, List<String>>> bin = (List<Entry<List<String>, List<String>>>)obsout.readObject();
-		obsout.close();
-		
-		
 		List<Index<Integer>.Block> blocks = index.getBlocks();
-		assertEquals(7999, blocks.size());
+		assertEquals(7713, bin.size());
+		assertEquals(7713, blocks.size());
 		
 		Iterator<Index<Integer>.Block> iter = blocks.iterator();
 		Iterator<Entry<List<String>, List<String>>> real = bin.iterator();
 		while(iter.hasNext()){
+			Entry<List<String>, List<String>> test = real.next();
+			Index<Integer>.Block block = iter.next();
 			
-			
-			
+			assertEquals(test.getKey().toString(), block.getPaths().toString());
+			assertEquals(test.getValue().toString(), block.getLabels().stream().map(this::labelsToString).sorted().collect(Collectors.toList()).toString());
 		}
 	}
 	
-	@Disabled//TODO
 	@Test
-	public void robotsk1() throws IOException, ClassNotFoundException{
-		UniqueGraph<Integer, Predicate> graph = Main.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge"));
+	public void robotsK1() throws IOException, ClassNotFoundException{
+		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
+		List<Entry<List<String>, List<String>>> bin = readGraph("robots1.bin");
 		
 		Index<Integer> index = new Index<Integer>(graph, 1, false);
 		index.sort();
-		
-		ObjectInputStream obsout = new ObjectInputStream(new FileInputStream(new File("robots1.bin")));
-		List<Entry<List<String>, List<String>>> bin = (List<Entry<List<String>, List<String>>>)obsout.readObject();
-		obsout.close();
 		
 		List<Index<Integer>.Block> blocks = index.getBlocks();
 		assertEquals(24, bin.size());
@@ -308,5 +297,12 @@ public class IndexTest{
 			buf.append(label.getAlias());
 		}
 		return buf.toString();
+	}
+	
+	@SuppressWarnings("unchecked")
+	private List<Entry<List<String>, List<String>>> readGraph(String name) throws IOException, ClassNotFoundException{
+		try(ObjectInputStream obsout = new ObjectInputStream(ClassLoader.getSystemResourceAsStream(name))){
+			return (List<Entry<List<String>, List<String>>>)obsout.readObject();
+		}
 	}
 }

@@ -49,28 +49,28 @@ public class Main{
 		
 		//TODO
 		
-//		File file = new File("robots1.txt");
-//		try{
-//			file.createNewFile();
-//		}catch(IOException e1){
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
-//		PrintStream fs = new PrintStream(file);
-//		
-//		try{
-//			formatIndex(
-//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\robots1_l2h"),
-//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\robots1_h2p"),
-////				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\selfloop_k2_l2h"),
-////				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\selfloop_k2_h2p"),
-//				8,//DO NOT FORGET TO UPDATE THE LABEL COUNT!!! 2x
-//				fs
-//			);
-//		}catch(IOException e){
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
+		File file = new File("robots_fixed.txt");
+		try{
+			file.createNewFile();
+		}catch(IOException e1){
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		PrintStream fs = new PrintStream(file);
+		
+		try{
+			formatIndex(
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\robots_fixed_l2h"),
+				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\robots_fixed_h2p"),
+//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\selfloop_k2_l2h"),
+//				Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\k-path\\selfloop_k2_h2p"),
+				8,//DO NOT FORGET TO UPDATE THE LABEL COUNT!!! 2x
+				fs
+			);
+		}catch(IOException e){
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 //		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
 //		
@@ -90,39 +90,39 @@ public class Main{
 
 		//7721 - 7728
 		
-		try{
-			Instant start = Instant.now();
-			Index<Integer> index = new Index<Integer>(readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, false);
-			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
-			
-			index.sort();
-			
-//			BufferedWriter w = Files.newBufferedWriter(Paths.get("myindex_test.txt"));
-//			for(Index<Integer>.Block block : index.getBlocks()){
-//				String head = block.getPaths().toString();
-//				w.append(head.substring(1, head.length() - 1));
-//				w.append(": ");
-////				for(Index<Integer>.LabelSequence s : block.getLabels()){
-////					for(Predicate p : s.getLabels()){
-////						w.append(p.getAlias());
+//		try{
+//			Instant start = Instant.now();
+//			Index<Integer> index = new Index<Integer>(readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, false);
+//			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
+//			
+//			index.sort();
+//			
+////			BufferedWriter w = Files.newBufferedWriter(Paths.get("myindex_test.txt"));
+////			for(Index<Integer>.Block block : index.getBlocks()){
+////				String head = block.getPaths().toString();
+////				w.append(head.substring(1, head.length() - 1));
+////				w.append(": ");
+//////				for(Index<Integer>.LabelSequence s : block.getLabels()){
+//////					for(Predicate p : s.getLabels()){
+//////						w.append(p.getAlias());
+//////					}
+//////				}
+////				w.append(block.getLabels().stream().map(ls->{
+////					String str = "";
+////					for(Predicate p : ls.getLabels()){
+////						str += p.getAlias();
 ////					}
-////				}
-//				w.append(block.getLabels().stream().map(ls->{
-//					String str = "";
-//					for(Predicate p : ls.getLabels()){
-//						str += p.getAlias();
-//					}
-//					return str;
-//				}).collect(Collectors.toList()).toString());
-//				w.newLine();
-//			}
-//			w.flush();
-//			w.close();
-		
-		}catch(IllegalArgumentException | IOException e){
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+////					return str;
+////				}).collect(Collectors.toList()).toString());
+////				w.newLine();
+////			}
+////			w.flush();
+////			w.close();
+//		
+//		}catch(IllegalArgumentException | IOException e){
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 	}
 	
 	private static <T extends Comparable<T>> String labelsToString(Index<T>.LabelSequence labels){
@@ -131,41 +131,6 @@ public class Main{
 			buf.append(label.getAlias());
 		}
 		return buf.toString();
-	}
-	
-	public static UniqueGraph<Integer, Predicate> readGraph(Path file) throws IOException{
-		try(Stream<String> stream = Files.lines(file, StandardCharsets.UTF_8)){
-			Iterator<String> iter = stream.iterator();
-			String[] meta = iter.next().split(" ");
-			int vertices = Integer.parseInt(meta[0]);
-			int labelCount = Integer.parseInt(meta[2]);
-			List<Predicate> labels = Util.generateLabels(labelCount);
-			
-			UniqueGraph<Integer, Predicate> graph = new UniqueGraph<Integer, Predicate>();
-			for(int i = 0; i < vertices; i++){
-				graph.addUniqueNode(i);
-			}
-			
-			GraphNode<Integer, Predicate> last = null;
-			while(iter.hasNext()){
-				String[] args = iter.next().split(" ");
-				if(args.length == 0){
-					break;
-				}
-				
-				int src = Integer.parseInt(args[0]);
-				int trg = Integer.parseInt(args[1]);
-				int lab = Integer.parseInt(args[2]);
-				
-				if(last == null || last.getID() != src){
-					last = graph.getNode(src);
-				}
-				
-				last.addUniqueEdgeTo(trg, labels.get(lab));
-			}
-			
-			return graph;
-		}
 	}
 	
 	private static void formatIndex(Path lh, Path hp, int lc, PrintStream outStream) throws IOException{
@@ -260,10 +225,10 @@ public class Main{
 //			}
 		}
 		
-		ObjectOutputStream obsout = new ObjectOutputStream(new FileOutputStream(new File("robots1.bin")));
-		obsout.writeObject(bin);
-		obsout.flush();
-		obsout.close();
+//		ObjectOutputStream obsout = new ObjectOutputStream(new FileOutputStream(new File("robots1.bin")));
+//		obsout.writeObject(bin);
+//		obsout.flush();
+//		obsout.close();
 		
 //		for(String s : out){
 //			outStream.println(s);
