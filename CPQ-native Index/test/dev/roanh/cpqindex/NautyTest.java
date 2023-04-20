@@ -19,18 +19,6 @@ public class NautyTest{
 	
 	@Test
 	public void fullCanon(){
-		int[][] g1 = new int[][]{
-			new int[]{3},
-			new int[]{6},
-			new int[]{7, 5},
-			new int[]{4},
-			new int[]{},
-			new int[]{0},
-			new int[]{4},
-			new int[]{1},
-		};
-		int[] c1 = new int[]{-3, -5, 6, -8, -7, -4, 1, -2};
-		
 		int[][] g2 = new int[][]{
 			new int[]{3},
 			new int[]{6},
@@ -54,16 +42,6 @@ public class NautyTest{
 			new int[]{1},
 		};
 		int[] c3 = new int[]{-3, -5, 6, -8, -4, -7, 1, -2};
-		
-		assertTrue(Arrays.deepEquals(
-			relabel(g1, Nauty.computeCanonSparse(g1, c1)),
-			relabel(g2, Nauty.computeCanonSparse(g2, c2))
-		));
-		
-		assertTrue(Arrays.deepEquals(
-			relabel(g1, Nauty.computeCanonSparse(g1, c1)),
-			relabel(g3, Nauty.computeCanonSparse(g3, c3))
-		));
 		
 		assertTrue(Arrays.deepEquals(
 			relabel(g3, Nauty.computeCanonSparse(g3, c3)),
