@@ -42,7 +42,8 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 	parseColoring(env, n, &colors, labels, ptn);
 
 	//compute canonical form and labeling
-	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, NULL);
+	SG_DECL(canon);
+	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, &canon);
 
 	//check for errors
 	if(stats.errstatus != 0){
