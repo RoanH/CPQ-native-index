@@ -26,7 +26,7 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 	//set nauty settings
 	static DEFAULTOPTIONS_SPARSEDIGRAPH(options);
 	statsblk stats;
-	options.getcanon = FALSE;//we only need the relabeling function
+	options.getcanon = TRUE;
 	options.defaultptn = FALSE;
 
 	//allocated data structures
