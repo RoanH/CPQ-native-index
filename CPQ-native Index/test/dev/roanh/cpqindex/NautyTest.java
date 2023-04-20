@@ -108,8 +108,6 @@ public class NautyTest{
 	}
 	
 	private int[][] relabel(int[][] g, int[] lab){
-		System.out.println(Arrays.toString(lab));
-		
 		int[] inv = new int[lab.length];
  		for(int i = 0; i < lab.length; i++){
 			inv[lab[i]] = i;
@@ -123,7 +121,6 @@ public class NautyTest{
 				graph[i][j] = inv[row[j]];
 			}
 			Arrays.sort(graph[i]);
-			System.out.println(i + ": " + Arrays.toString(graph[i]));
 		}
 		
 		return graph;
