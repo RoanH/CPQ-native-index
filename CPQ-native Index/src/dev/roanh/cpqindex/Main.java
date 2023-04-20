@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
@@ -28,26 +29,26 @@ public class Main{
 		
 		//TODO
 		
-//		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
-//		
-//		
-//		CanonForm canon = new CanonForm(cpq);
-//		System.out.println(canon.toStringCanon());
-//		System.out.println(Arrays.toString(canon.toBinaryCanon()));
-//		for(byte b : canon.toBinaryCanon()){
-//			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
-//		}
-//		System.out.println();
-//		System.out.println(canon.toBase64Canon());
+		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
 		
-		try{
-			Instant start = Instant.now();
-			Index<Integer> index = new Index<Integer>(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\advogato.edge")), 2, false);
-			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
-		}catch(IllegalArgumentException | IOException e){
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		
+		CanonForm canon = new CanonForm(cpq);
+		System.out.println(canon.toStringCanon());
+		System.out.println(Arrays.toString(canon.toBinaryCanon()));
+		for(byte b : canon.toBinaryCanon()){
+			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
 		}
+		System.out.println();
+		System.out.println(canon.toBase64Canon());
+		
+//		try{
+//			Instant start = Instant.now();
+//			Index<Integer> index = new Index<Integer>(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\advogato.edge")), 2, false);
+//			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
+//		}catch(IllegalArgumentException | IOException e){
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 	}
 	
 	/**
@@ -73,7 +74,7 @@ public class Main{
 	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
 		try(DirectoryStream<Path> libs = Files.newDirectoryStream(Paths.get("lib"), Files::isRegularFile)){
 			for(Path lib : libs){
-				if(!lib.getFileName().toString().endsWith(".jar")){
+				if(lib.getFileName() != null && !lib.getFileName().toString().endsWith(".jar")){
 					System.out.println("Loading native library: " + lib.getFileName());
 					System.load(lib.toAbsolutePath().toString());
 				}
