@@ -105,8 +105,8 @@ public class Nauty{
 		
 		return new ColoredGraph(
 			adj,
-			src,
-			trg,
+			src == -1 ? trg : src,
+			trg == -1 ? src : trg,
 			colorMap.entrySet().stream().sorted(Entry.comparingByKey()).collect(Collectors.toCollection(ArrayList::new)),
 			nolabel
 		);
