@@ -68,7 +68,7 @@ repositories{
 
 dependencies{
 	//implementation 'dev.roanh.gmark:gmark:1.2'
-	implementation files('lib/gmark.jar')
+	implementation files('gmark.jar')
 	testImplementation(platform('org.junit:junit-bom:5.8.1'))
 	testImplementation('org.junit.jupiter:junit-jupiter')
 }
