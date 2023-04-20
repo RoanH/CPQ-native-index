@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import dev.roanh.cpqindex.Nauty.ColoredGraph;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
@@ -192,5 +193,15 @@ public class CanonForm{
 	 */
 	public String toBase64Canon(){
 		return Base64.getEncoder().encodeToString(toBinaryCanon());
+	}
+	
+	@Override
+	public boolean equals(Object obj){
+		return obj instanceof CanonForm && Arrays.equals(toBinaryCanon(), ((CanonForm)obj).toBinaryCanon());
+	}
+	
+	@Override
+	public int hashCode(){
+		return Objects.hashCode(toBinaryCanon());
 	}
 }
