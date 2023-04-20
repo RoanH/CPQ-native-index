@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
@@ -38,7 +37,6 @@ public class CanonFormTest{
 		assertEquals("AgEYEEiKTBx5JJpg", canon.toBase64Canon());
 	}
 
-	@Disabled
 	@Test
 	public void canon1(){
 		Predicate l1 = new Predicate(0, "a");
