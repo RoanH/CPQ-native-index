@@ -1,11 +1,12 @@
 package dev.roanh.cpqindex;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
@@ -16,7 +17,7 @@ import dev.roanh.gmark.util.UniqueGraph;
 
 public class Main{
 
-	public static void main(String[] args) throws FileNotFoundException{
+	public static void main(String[] args){
 		//initialise native bindings
 		try{
 			loadNatives();
@@ -39,41 +40,14 @@ public class Main{
 //		System.out.println();
 //		System.out.println(canon.toBase64Canon());
 		
-		
-		
-//		try{
-//			Instant start = Instant.now();
-//			Index<Integer> index = new Index<Integer>(readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, false);
-//			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
-//			
-//			index.sort();
-//			
-////			BufferedWriter w = Files.newBufferedWriter(Paths.get("myindex_test.txt"));
-////			for(Index<Integer>.Block block : index.getBlocks()){
-////				String head = block.getPaths().toString();
-////				w.append(head.substring(1, head.length() - 1));
-////				w.append(": ");
-//////				for(Index<Integer>.LabelSequence s : block.getLabels()){
-//////					for(Predicate p : s.getLabels()){
-//////						w.append(p.getAlias());
-//////					}
-//////				}
-////				w.append(block.getLabels().stream().map(ls->{
-////					String str = "";
-////					for(Predicate p : ls.getLabels()){
-////						str += p.getAlias();
-////					}
-////					return str;
-////				}).collect(Collectors.toList()).toString());
-////				w.newLine();
-////			}
-////			w.flush();
-////			w.close();
-//		
-//		}catch(IllegalArgumentException | IOException e){
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
+		try{
+			Instant start = Instant.now();
+			Index<Integer> index = new Index<Integer>(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\advogato.edge")), 2, false);
+			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
+		}catch(IllegalArgumentException | IOException e){
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	/**
