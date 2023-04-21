@@ -34,6 +34,7 @@ import dev.roanh.gmark.util.Util;
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
 public class Index<V extends Comparable<V>>{
+	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
 	private List<Block> blocks = new ArrayList<Block>();
@@ -72,7 +73,7 @@ public class Index<V extends Comparable<V>>{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index<Integer> eq = new Index<Integer>(g, 2, true);
+		Index<Integer> eq = new Index<Integer>(g, 2, true, true);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -114,11 +115,12 @@ public class Index<V extends Comparable<V>>{
 	}
 	
 	public Index(UniqueGraph<V, Predicate> g, int k) throws IllegalArgumentException{
-		this(g, k, true);
+		this(g, k, true, false);
 	}
 	
-	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores) throws IllegalArgumentException{
+	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores, boolean computeLabels) throws IllegalArgumentException{
 		this.computeCores = computeCores;
+		this.computeLabels = computeLabels;
 		this.k = k;
 		computeBlocks(partition(g));
 		mapCoresToBlocks();
@@ -126,10 +128,10 @@ public class Index<V extends Comparable<V>>{
 	
 	public List<Pair> query(CPQ cpq) throws IllegalArgumentException{
 		if(cpq.getDiameter() > k){
-			throw new IllegalArgumentException("Query diameter large than index diameter.");
+			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		String key = new CanonForm(cpq).toBase64Canon();
+		String key = new CanonForm(cpq).toBase64Canon();//TODO bytes
 		System.out.println("key: " + key);
 		System.out.println("ret: " + coreToBlock.get(key));
 		
@@ -339,8 +341,8 @@ public class Index<V extends Comparable<V>>{
 						});
 						
 						path.addSegment(seg, end);
-						if(k2 == 0){//slight optimisation, since we only need one combination to find all paths
-							for(LabelSequence labels : seg.labels){//TODO, do we even need to do this?
+						if(k2 == 0 && computeLabels){//slight optimisation, since we only need one combination to find all paths
+							for(LabelSequence labels : seg.labels){
 								for(LabelSequence label : end.labels){
 									path.addLabel(labels, label);
 								}
@@ -372,6 +374,15 @@ public class Index<V extends Comparable<V>>{
 		return segments;
 	}
 	
+	/**
+	 * Compares the given paths based on their segments,
+	 * cyclic properties, source and target.
+	 * @param a The first path.
+	 * @param b The second path.
+	 * @return A value less than 0 if {@code a < b}, a value equal
+	 *         to 0 if {@code a == b} and a value grater than 0 if
+	 *         {@code a > b}.
+	 */
 	private int sortPaths(LabelledPath a, LabelledPath b){
 		int cmp = a.compareSegmentsTo(b);
 		if(cmp != 0){
@@ -403,7 +414,7 @@ public class Index<V extends Comparable<V>>{
 	public final class Block{
 		private final int id;
 		private List<Pair> paths;
-		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use
+		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
 		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically only need #canonCores, but this is good for debugging
 		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug
 		
@@ -417,15 +428,19 @@ public class Index<V extends Comparable<V>>{
 			LabelledPath parent = slice.get(0);
 			while(parent.ancestor != null){
 				parent = parent.ancestor;
-				labels.addAll(parent.labels);//TODO no need for labels when only computing cores (unless layer 1 but layer 1 has no ancestors anyway
+				if(computeLabels){
+					labels.addAll(parent.labels);
+				}
 				
 				//these are by definition of a different diameter
-				cores.addAll(parent.block.cores);
-				canonCores.addAll(parent.block.canonCores);
+				if(computeCores){
+					cores.addAll(parent.block.cores);
+					canonCores.addAll(parent.block.canonCores);
+				}
 			}
 			
 			if(computeCores){
-				computeCores(slice.get(0).segs);
+				computeCores(slice.get(0).segs);//TODO could be multithreaded by layer
 			}
 		}
 		
@@ -449,7 +464,7 @@ public class Index<V extends Comparable<V>>{
 		
 		private void computeCores(Set<PathPair> segs){
 			if(segs.isEmpty()){
-				//TODO technically these were already computed -- here or elsewhere?
+				//TODO technically these were already computed -- here or elsewhere? -- may not be a performance issue though
 				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).forEach(this::addCore);
 			}else{
 				//all combinations of cores from previous layers

@@ -17,11 +17,36 @@ import dev.roanh.gmark.util.UniqueGraph;
 public class IndexTest{
 	
 	@Test
+	public void robotsK2NoLabels() throws IOException, ClassNotFoundException{
+		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
+		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
+		
+		Index<Integer> index = new Index<Integer>(graph, 2, false, false);
+		index.sort();
+		
+		List<Index<Integer>.Block> blocks = index.getBlocks();
+		assertEquals(7713, bin.size());
+		assertEquals(7713, blocks.size());
+		
+		Iterator<Index<Integer>.Block> iter = blocks.iterator();
+		Iterator<Entry<List<String>, List<String>>> real = bin.iterator();
+		while(iter.hasNext()){
+			Entry<List<String>, List<String>> test = real.next();
+			Index<Integer>.Block block = iter.next();
+			
+			assertEquals(test.getKey().toString(), block.getPaths().toString());
+			block.getLabels().forEach(s->{
+				assertEquals(1, s.getLabels().length);
+			});
+		}
+	}
+	
+	@Test
 	public void robotsK2() throws IOException, ClassNotFoundException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
-		Index<Integer> index = new Index<Integer>(graph, 2, false);
+		Index<Integer> index = new Index<Integer>(graph, 2, false, true);
 		index.sort();
 		
 		List<Index<Integer>.Block> blocks = index.getBlocks();
@@ -44,7 +69,7 @@ public class IndexTest{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots1.bin");
 		
-		Index<Integer> index = new Index<Integer>(graph, 1, false);
+		Index<Integer> index = new Index<Integer>(graph, 1, false, true);
 		index.sort();
 		
 		List<Index<Integer>.Block> blocks = index.getBlocks();
@@ -87,7 +112,7 @@ public class IndexTest{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index<Integer> index = new Index<Integer>(g, 4, false);
+		Index<Integer> index = new Index<Integer>(g, 4, false, true);
 		index.sort();
 		
 		List<Index<Integer>.Block> blocks = index.getBlocks();
