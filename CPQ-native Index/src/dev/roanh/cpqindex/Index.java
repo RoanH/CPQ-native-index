@@ -608,9 +608,9 @@ public class Index{
 
 		public int compareSegmentsTo(LabelledPath other){
 			int cmp = Integer.compare(segHash, other.segHash);
-//			if(cmp != 0){
-//				return cmp;
-//			}
+			if(cmp != 0){
+				return cmp;
+			}
 			
 			cmp = Boolean.compare(ancestor == null, other.ancestor == null);
 			if(cmp != 0){
@@ -684,6 +684,11 @@ public class Index{
 			builder.append("}]");
 			builder.append("}]");
 			return builder.toString();
+		}
+		
+		@Override
+		public int hashCode(){
+			return segId;
 		}
 	}
 	

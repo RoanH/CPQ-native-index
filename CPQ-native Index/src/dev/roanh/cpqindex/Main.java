@@ -42,9 +42,9 @@ public class Main{
 //		System.out.println(canon.toBase64Canon());
 		
 		try{
-			Thread.sleep(30000);
+			Thread.sleep(3000);
 			System.out.println("START");
-			Instant start = Instant.now();
+			Instant start = Instant.now();//advogato, robots
 			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\advogato.edge")), 2, false, false);
 			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
 		}catch(IllegalArgumentException | IOException | InterruptedException e){
