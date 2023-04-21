@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -28,7 +27,6 @@ import dev.roanh.gmark.util.Util;
  * and with support for indexing by CPQ cores. This index is based on the
  * path index proposed by Yuya Sasaki, George Fletcher and Makoto Onizuka.
  * @author Roan
- * @param <V> The graph vertex data type.
  * @see <a href="https://doi.org/10.1109/ICDE53745.2022.00054">Yuya Sasaki, George Fletcher and Makoto Onizuka,
  *      "Language-aware indexing for conjunctive path queries", in IEEE 38th ICDE, 2022</a>
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
@@ -551,17 +549,13 @@ public class Index{
 		
 		@Override
 		public boolean equals(Object obj){
-			if(obj instanceof Index.PathPair){
-				Index.PathPair other = (Index.PathPair)obj;
-				return first.equals(other.first) && second.equals(other.second);
-			}else{
-				return false;
-			}
+			Index.PathPair other = (Index.PathPair)obj;
+			return first.equals(other.first) && second.equals(other.second);
 		}
 		
 		@Override
 		public int hashCode(){
-			return Objects.hash(first, second);
+			return 31 * first.hashCode() + second.hashCode();
 		}
 
 		@Override
@@ -733,7 +727,7 @@ public class Index{
 		
 		@Override
 		public boolean equals(Object obj){
-			return obj instanceof Index.LabelSequence ? Arrays.equals(data, ((Index.LabelSequence)obj).data) : false;
+			return Arrays.equals(data, ((Index.LabelSequence)obj).data);
 		}
 	}
 	
@@ -789,17 +783,13 @@ public class Index{
 		
 		@Override
 		public boolean equals(Object obj){
-			if(obj instanceof Index.Pair){
-				Index.Pair other = (Index.Pair)obj;
-				return src == other.src && trg == other.trg;
-			}else{
-				return false;
-			}
+			Index.Pair other = (Index.Pair)obj;
+			return src == other.src && trg == other.trg;
 		}
 
 		@Override
 		public int hashCode(){
-			return Objects.hash(src, trg);
+			return 31 * src + trg;
 		}
 		
 		@Override
