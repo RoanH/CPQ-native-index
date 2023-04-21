@@ -355,6 +355,7 @@ public class Index<V extends Comparable<V>>{
 			//sort
 			System.out.println("Start sort: " + (i + 1));
 			List<LabelledPath> segs = segments.get(i);
+			pathMap.values().forEach(s->s.segHash = s.segs.hashCode());
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
 			System.out.println("end sort");
 
@@ -591,6 +592,7 @@ public class Index<V extends Comparable<V>>{
 		private Block block;
 		
 		private SortedSet<PathPair> segs = new TreeSet<PathPair>();//effectively a history of blocks that were combined to form this path
+		private int segHash;//TODO set from a different place kinda eh
 		private LabelledPath ancestor;
 		
 		private LabelledPath(Pair pair, LabelledPath ancestor){
@@ -603,7 +605,12 @@ public class Index<V extends Comparable<V>>{
 		}
 
 		public int compareSegmentsTo(LabelledPath other){
-			int cmp = Boolean.compare(ancestor == null, other.ancestor == null);
+			int cmp = Integer.compare(segHash, other.segHash);
+			if(cmp != 0){
+				return cmp;
+			}
+			
+			cmp = Boolean.compare(ancestor == null, other.ancestor == null);
 			if(cmp != 0){
 				return cmp;
 			}
