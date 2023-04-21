@@ -21,18 +21,18 @@ public class IndexTest{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
-		Index<Integer> index = new Index<Integer>(graph, 2, false, false);
+		Index index = new Index(graph, 2, false, false);
 		index.sort();
 		
-		List<Index<Integer>.Block> blocks = index.getBlocks();
+		List<Index.Block> blocks = index.getBlocks();
 		assertEquals(7713, bin.size());
 		assertEquals(7713, blocks.size());
 		
-		Iterator<Index<Integer>.Block> iter = blocks.iterator();
+		Iterator<Index.Block> iter = blocks.iterator();
 		Iterator<Entry<List<String>, List<String>>> real = bin.iterator();
 		while(iter.hasNext()){
 			Entry<List<String>, List<String>> test = real.next();
-			Index<Integer>.Block block = iter.next();
+			Index.Block block = iter.next();
 			
 			assertEquals(test.getKey().toString(), block.getPaths().toString());
 			block.getLabels().forEach(s->{
@@ -46,18 +46,18 @@ public class IndexTest{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
-		Index<Integer> index = new Index<Integer>(graph, 2, false, true);
+		Index index = new Index(graph, 2, false, true);
 		index.sort();
 		
-		List<Index<Integer>.Block> blocks = index.getBlocks();
+		List<Index.Block> blocks = index.getBlocks();
 		assertEquals(7713, bin.size());
 		assertEquals(7713, blocks.size());
 		
-		Iterator<Index<Integer>.Block> iter = blocks.iterator();
+		Iterator<Index.Block> iter = blocks.iterator();
 		Iterator<Entry<List<String>, List<String>>> real = bin.iterator();
 		while(iter.hasNext()){
 			Entry<List<String>, List<String>> test = real.next();
-			Index<Integer>.Block block = iter.next();
+			Index.Block block = iter.next();
 			
 			assertEquals(test.getKey().toString(), block.getPaths().toString());
 			assertEquals(test.getValue().toString(), block.getLabels().stream().map(this::labelsToString).sorted().collect(Collectors.toList()).toString());
@@ -69,18 +69,18 @@ public class IndexTest{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots1.bin");
 		
-		Index<Integer> index = new Index<Integer>(graph, 1, false, true);
+		Index index = new Index(graph, 1, false, true);
 		index.sort();
 		
-		List<Index<Integer>.Block> blocks = index.getBlocks();
+		List<Index.Block> blocks = index.getBlocks();
 		assertEquals(24, bin.size());
 		assertEquals(24, blocks.size());
 		
-		Iterator<Index<Integer>.Block> iter = blocks.iterator();
+		Iterator<Index.Block> iter = blocks.iterator();
 		Iterator<Entry<List<String>, List<String>>> real = bin.iterator();
 		while(iter.hasNext()){
 			Entry<List<String>, List<String>> test = real.next();
-			Index<Integer>.Block block = iter.next();
+			Index.Block block = iter.next();
 			
 			assertEquals(test.getKey().toString(), block.getPaths().toString());
 			assertEquals(test.getValue().toString(), block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
@@ -112,14 +112,14 @@ public class IndexTest{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index<Integer> index = new Index<Integer>(g, 4, false, true);
+		Index index = new Index(g, 4, false, true);
 		index.sort();
 		
-		List<Index<Integer>.Block> blocks = index.getBlocks();
+		List<Index.Block> blocks = index.getBlocks();
 		assertEquals(49, blocks.size());
-		Iterator<Index<Integer>.Block> iter = blocks.iterator();
+		Iterator<Index.Block> iter = blocks.iterator();
 		
-		Index<Integer>.Block block = iter.next();
+		Index.Block block = iter.next();
 		assertEquals("[(0,0)]", block.getPaths().toString());
 		assertEquals("[00⁻, 11⁻, 000⁻0⁻, 001⁻1⁻, 00⁻00⁻, 00⁻11⁻, 110⁻0⁻, 111⁻1⁻, 11⁻00⁻, 11⁻11⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
 		
@@ -316,7 +316,7 @@ public class IndexTest{
 		assertEquals("[2⁻2, 3⁻3, 2⁻22⁻2, 2⁻23⁻3, 2⁻2⁻22, 2⁻2⁻33, 3⁻32⁻2, 3⁻33⁻3, 3⁻3⁻22, 3⁻3⁻33]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
 	}
 	
-	private <T extends Comparable<T>> String labelsToString(Index<T>.LabelSequence labels){
+	private String labelsToString(Index.LabelSequence labels){
 		StringBuilder buf = new StringBuilder();
 		for(Predicate label : labels.getLabels()){
 			buf.append(label.getAlias());

@@ -32,23 +32,25 @@ public class Main{
 		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
 		
 		
-		CanonForm canon = new CanonForm(cpq);
-		System.out.println(canon.toStringCanon());
-		System.out.println(Arrays.toString(canon.toBinaryCanon()));
-		for(byte b : canon.toBinaryCanon()){
-			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
-		}
-		System.out.println();
-		System.out.println(canon.toBase64Canon());
-		
-//		try{
-//			Instant start = Instant.now();
-//			Index<Integer> index = new Index<Integer>(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\advogato.edge")), 2, false);
-//			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
-//		}catch(IllegalArgumentException | IOException e){
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
+//		CanonForm canon = new CanonForm(cpq);
+//		System.out.println(canon.toStringCanon());
+//		System.out.println(Arrays.toString(canon.toBinaryCanon()));
+//		for(byte b : canon.toBinaryCanon()){
+//			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
 //		}
+//		System.out.println();
+//		System.out.println(canon.toBase64Canon());
+		
+		try{
+			Thread.sleep(30000);
+			System.out.println("START");
+			Instant start = Instant.now();
+			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\advogato.edge")), 2, false, false);
+			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
+		}catch(IllegalArgumentException | IOException | InterruptedException e){
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	/**

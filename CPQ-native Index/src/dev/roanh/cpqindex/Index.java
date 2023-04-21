@@ -33,12 +33,13 @@ import dev.roanh.gmark.util.Util;
  *      "Language-aware indexing for conjunctive path queries", in IEEE 38th ICDE, 2022</a>
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
-public class Index<V extends Comparable<V>>{
+public class Index{
 	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
 	private List<Block> blocks = new ArrayList<Block>();
 	private Map<String, List<Block>> coreToBlock = new HashMap<String, List<Block>>();
+	private UniqueGraph<Integer, Predicate> graph;
 	
 	//TODO double check private/public of everything
 	
@@ -73,7 +74,7 @@ public class Index<V extends Comparable<V>>{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index<Integer> eq = new Index<Integer>(g, 2, true, true);
+		Index eq = new Index(g, 2, true, true);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -114,14 +115,15 @@ public class Index<V extends Comparable<V>>{
 		System.out.println(eq.query(q));
 	}
 	
-	public Index(UniqueGraph<V, Predicate> g, int k) throws IllegalArgumentException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k) throws IllegalArgumentException{
 		this(g, k, true, false);
 	}
 	
-	public Index(UniqueGraph<V, Predicate> g, int k, boolean computeCores, boolean computeLabels) throws IllegalArgumentException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels) throws IllegalArgumentException{
 		this.computeCores = computeCores;
 		this.computeLabels = computeLabels;
 		this.k = k;
+		graph = g;
 		computeBlocks(partition(g));
 		mapCoresToBlocks();
 	}
@@ -279,7 +281,7 @@ public class Index<V extends Comparable<V>>{
 	}
 	
 	//partition according to k-path-bisimulation
-	private RangeList<List<LabelledPath>> partition(UniqueGraph<V, Predicate> g) throws IllegalArgumentException{
+	private RangeList<List<LabelledPath>> partition(UniqueGraph<Integer, Predicate> g) throws IllegalArgumentException{
 		if(k <= 0){
 			throw new IllegalArgumentException("Invalid value of k for bisimulation, has to be 1 or greater.");
 		}
@@ -289,7 +291,7 @@ public class Index<V extends Comparable<V>>{
 		
 		//classes for 1-path-bisimulation
 		Map<Pair, LabelledPath> pathMap = new HashMap<Pair, LabelledPath>();
-		for(GraphEdge<V, Predicate> edge : g.getEdges()){
+		for(GraphEdge<Integer, Predicate> edge : g.getEdges()){
 			//forward and backward edges are just the labels on those edges
 			LabelledPath path = pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), p->new LabelledPath(p, null));
 			path.addLabel(edge.getData());
@@ -329,7 +331,7 @@ public class Index<V extends Comparable<V>>{
 				
 				for(LabelledPath seg : segments.get(k1)){
 					for(LabelledPath end : segments.get(k2)){
-						if(!seg.pair.trg.equals(end.pair.src)){
+						if(seg.pair.trg != end.pair.src){
 							continue;
 						}
 						
@@ -549,8 +551,8 @@ public class Index<V extends Comparable<V>>{
 		
 		@Override
 		public boolean equals(Object obj){
-			if(obj instanceof Index<?>.PathPair){
-				Index<?>.PathPair other = (Index<?>.PathPair)obj;
+			if(obj instanceof Index.PathPair){
+				Index.PathPair other = (Index.PathPair)obj;
 				return first.equals(other.first) && second.equals(other.second);
 			}else{
 				return false;
@@ -606,9 +608,9 @@ public class Index<V extends Comparable<V>>{
 
 		public int compareSegmentsTo(LabelledPath other){
 			int cmp = Integer.compare(segHash, other.segHash);
-			if(cmp != 0){
-				return cmp;
-			}
+//			if(cmp != 0){
+//				return cmp;
+//			}
 			
 			cmp = Boolean.compare(ancestor == null, other.ancestor == null);
 			if(cmp != 0){
@@ -726,7 +728,7 @@ public class Index<V extends Comparable<V>>{
 		
 		@Override
 		public boolean equals(Object obj){
-			return obj instanceof Index<?>.LabelSequence ? Arrays.equals(data, ((Index<?>.LabelSequence)obj).data) : false;
+			return obj instanceof Index.LabelSequence ? Arrays.equals(data, ((Index.LabelSequence)obj).data) : false;
 		}
 	}
 	
@@ -739,18 +741,18 @@ public class Index<V extends Comparable<V>>{
 		/**
 		 * The source vertex.
 		 */
-		private final V src;
+		private final int src;
 		/**
 		 * The target vertex.
 		 */
-		private final V trg;
+		private final int trg;
 		
 		/**
 		 * Constructs a new pair with the given source and target vertex.
 		 * @param src The source vertex.
 		 * @param trg The target vertex.
 		 */
-		private Pair(V src, V trg){
+		private Pair(int src, int trg){
 			this.src = src;
 			this.trg = trg;
 		}
@@ -759,7 +761,7 @@ public class Index<V extends Comparable<V>>{
 		 * Get the source vertex of this pair.
 		 * @return The source vertex of this pair.
 		 */
-		public V getSource(){
+		public int getSource(){
 			return src;
 		}
 		
@@ -767,7 +769,7 @@ public class Index<V extends Comparable<V>>{
 		 * Gets the target vertex of this pair.
 		 * @return The target vertex of thsi pair.
 		 */
-		public V getTarget(){
+		public int getTarget(){
 			return trg;
 		}
 		
@@ -777,14 +779,14 @@ public class Index<V extends Comparable<V>>{
 		 * @return True if this pair represents a loop.
 		 */
 		public boolean isLoop(){
-			return src.equals(trg);
+			return src == trg;
 		}
 		
 		@Override
 		public boolean equals(Object obj){
 			if(obj instanceof Index.Pair){
-				Index<?>.Pair other = (Index<?>.Pair)obj;
-				return src.equals(other.src) && trg.equals(other.trg);
+				Index.Pair other = (Index.Pair)obj;
+				return src == other.src && trg == other.trg;
 			}else{
 				return false;
 			}
@@ -802,8 +804,8 @@ public class Index<V extends Comparable<V>>{
 
 		@Override
 		public int compareTo(Pair o){
-			int cmp = src.compareTo(o.src);
-			return cmp == 0 ? trg.compareTo(o.trg) : cmp;
+			int cmp = Integer.compare(src, o.src);
+			return cmp == 0 ? Integer.compare(trg, o.trg) : cmp;
 		}
 	}
 }
