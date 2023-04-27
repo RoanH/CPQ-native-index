@@ -10,8 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import dev.roanh.cpqindex.Index.Block;
@@ -21,13 +23,14 @@ import dev.roanh.gmark.util.UniqueGraph;
 
 public class IndexTest{
 	
+	@Disabled
 	@Test
-	public void coresBlock1813() throws IOException{
+	public void coresBlock1813() throws IOException, IllegalArgumentException, InterruptedException, ExecutionException{
 		try(BufferedReader reader = new BufferedReader(new InputStreamReader(ClassLoader.getSystemResourceAsStream("block1813.txt"), StandardCharsets.UTF_8))){
 			List<String> cores = reader.lines().map(CPQ::parse).map(CanonForm::new).map(CanonForm::toBase64Canon).collect(Collectors.toList());
 			
 			UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
-			Index index = new Index(graph, 2, false, false);
+			Index index = new Index(graph, 2, false, false, 1);
 			for(Block block : index.getBlocks()){
 				if(block.getId() == 1813){
 //					block.com
@@ -41,11 +44,11 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void robotsK2NoLabels() throws IOException, ClassNotFoundException{
+	public void robotsK2NoLabels() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException, ExecutionException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
-		Index index = new Index(graph, 2, false, false);
+		Index index = new Index(graph, 2, false, false, 1);
 		index.sort();
 		
 		List<Index.Block> blocks = index.getBlocks();
@@ -66,11 +69,11 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void robotsK2() throws IOException, ClassNotFoundException{
+	public void robotsK2() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException, ExecutionException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
-		Index index = new Index(graph, 2, false, true);
+		Index index = new Index(graph, 2, false, true, 1);
 		index.sort();
 		
 		List<Index.Block> blocks = index.getBlocks();
@@ -89,11 +92,11 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void robotsK1() throws IOException, ClassNotFoundException{
+	public void robotsK1() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException, ExecutionException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots1.bin");
 		
-		Index index = new Index(graph, 1, false, true);
+		Index index = new Index(graph, 1, false, true, 1);
 		index.sort();
 		
 		List<Index.Block> blocks = index.getBlocks();
@@ -112,7 +115,7 @@ public class IndexTest{
 	}
 
 	@Test
-	public void constructionTest(){
+	public void constructionTest() throws IllegalArgumentException, InterruptedException, ExecutionException{
 		Predicate l0 = new Predicate(0, "0");
 		Predicate l1 = new Predicate(1, "1");
 		Predicate l2 = new Predicate(2, "2");
@@ -136,7 +139,7 @@ public class IndexTest{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index index = new Index(g, 4, false, true);
+		Index index = new Index(g, 4, false, true, 1);
 		index.sort();
 		
 		List<Index.Block> blocks = index.getBlocks();

@@ -14,6 +14,13 @@ import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Consumer;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
@@ -44,7 +51,7 @@ public class Index{
 	
 	//TODO double check private/public of everything
 	
-	public static void main(String[] args){
+	public static void main(String[] args) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		try{
 			Main.loadNatives();
 		}catch(UnsatisfiedLinkError | IOException e){
@@ -75,7 +82,7 @@ public class Index{
 		g.addUniqueEdge(4, 6, l2);
 		g.addUniqueEdge(5, 6, l3);
 		
-		Index eq = new Index(g, 2, true, true);
+		Index eq = new Index(g, 2, true, true, 1);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -116,16 +123,16 @@ public class Index{
 		System.out.println(eq.query(q));
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k) throws IllegalArgumentException{
-		this(g, k, true, false);
+	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
+		this(g, k, true, false, threads);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels) throws IllegalArgumentException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		this.computeCores = computeCores;
 		this.computeLabels = computeLabels;
 		this.k = k;
 		graph = g;
-		computeBlocks(partition(g));
+		computeBlocks(partition(g), threads);
 		mapCoresToBlocks();
 	}
 	
@@ -233,31 +240,34 @@ public class Index{
 		}
 	}
 	
-	private void computeBlocks(RangeList<List<LabelledPath>> segments){
+	private void computeBlocks(RangeList<List<LabelledPath>> segments, int threads) throws InterruptedException, ExecutionException{
 		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		
 		for(int j = 0; j < k; j++){
+			List<Callable<Block>> tasks = new ArrayList<Callable<Block>>();
+			
 			List<LabelledPath> segs = segments.get(j);
 			int start = 0;
 			int lastId = segs.get(0).segId;
 			for(int i = 0; i <= segs.size(); i++){
 				if(i == segs.size() || segs.get(i).segId != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
-					Block block = new Block(slice, computeLabels, computeCores);
-					System.out.println(i + "/" + segs.size() + " | id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
-//					if(block.reject > 500){
-//						System.out.println(block.cores);
-//					}
+					
+					tasks.add(()->{
+						Block block = new Block(slice, computeLabels, computeCores);
+						System.out.println("id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
+						return block;
+					});
 					
 					if(j != k - 1){
 						for(LabelledPath path : slice){
 							unused.put(path.pair, path);
 						}
 					}else{
-						for(Pair pair : block.paths){
-							unused.remove(pair);
+						for(LabelledPath path : slice){
+							unused.remove(path.pair);
 						}
-						blocks.add(block);
 					}
 					
 					if(i != segs.size()){
@@ -266,23 +276,42 @@ public class Index{
 					}
 				}
 			}
+
+			for(Future<Block> future : executor.invokeAll(tasks)){
+				blocks.add(future.get());
+			}
 		}
 		
 		//any remaining pairs denote blocks from previous layers
 		List<LabelledPath> remaining = unused.values().stream().sorted(Comparator.comparing(l->l.segId)).collect(Collectors.toList());
 		if(!remaining.isEmpty()){
+			List<Callable<Block>> tasks = new ArrayList<Callable<Block>>();
+			
 			int start = 0;
 			int lastId = remaining.get(0).segId;
 			for(int i = 0; i <= remaining.size(); i++){
 				if(i == remaining.size() || remaining.get(i).segId != lastId){
-					blocks.add(new Block(remaining.subList(start, i), computeLabels, computeCores));
+					List<LabelledPath> slice = remaining.subList(start, i);
+					
+					tasks.add(()->{
+						Block block = new Block(slice, computeLabels, computeCores);
+						System.out.println("id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
+						return block;
+					});
+					
 					if(i != remaining.size()){
 						lastId = remaining.get(i).segId;
 						start = i;
 					}
 				}
 			}
+			
+			for(Future<Block> future : executor.invokeAll(tasks)){
+				blocks.add(future.get());
+			}
 		}
+		
+		executor.shutdown();
 	}
 	
 	//partition according to k-path-bisimulation
