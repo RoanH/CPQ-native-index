@@ -63,7 +63,7 @@ public class CanonForm{
 	 * @see Util#edgeLabelsToNodes(UniqueGraph)
 	 */
 	public CanonForm(QueryGraphCPQ graph){
-		this(Util.edgeLabelsToNodes(graph.computeCore()), graph.getSourceVertex(), graph.getTargetVertex());
+		this(Util.edgeLabelsToNodes(graph.computeCore().toUniqueGraph()), graph.getSourceVertex(), graph.getTargetVertex());
 	}
 
 	/**

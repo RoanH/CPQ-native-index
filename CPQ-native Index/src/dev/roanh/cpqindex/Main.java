@@ -17,6 +17,10 @@ import dev.roanh.gmark.util.GraphPanel;
 import dev.roanh.gmark.util.UniqueGraph;
 
 public class Main{
+	private static Predicate l1 = new Predicate(1, "a");
+	private static Predicate l2 = new Predicate(2, "b");
+	private static Predicate l3 = new Predicate(3, "c");
+	private static Predicate l4 = new Predicate(4, "d");
 
 	public static void main(String[] args){
 		//initialise native bindings
@@ -29,8 +33,15 @@ public class Main{
 		
 		//TODO
 		
-		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)");
+//		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)∩id∩a");
+//		
+//		cpq = CPQ.intersect(CPQ.labels(l1, l2), CPQ.labels(l1, l2));
+//		cpq = CPQ.parse("((((0⁻ ∩ id) ∩ 0) ∩ ((0◦0)◦1⁻)) ∩ (((1⁻◦1) ∩ (1⁻◦1)) ∩ 0))");
 		
+		
+		
+//		GraphPanel.show(cpq);
+//		GraphPanel.show(cpq.toQueryGraph().computeCore());
 		
 //		CanonForm canon = new CanonForm(cpq);
 //		System.out.println(canon.toStringCanon());
@@ -42,7 +53,7 @@ public class Main{
 //		System.out.println(canon.toBase64Canon());
 		
 		try{
-			Thread.sleep(2000);
+			Thread.sleep(20000);
 			System.out.println("START");
 			Instant start = Instant.now();//advogato, robots
 			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true, false);//cores, labels
@@ -51,6 +62,8 @@ public class Main{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+//		findRandomCore();
 	}
 	
 	/**
@@ -58,8 +71,11 @@ public class Main{
 	 */
 	public static void findRandomCore(){
 		while(true){
-			QueryGraphCPQ g = CPQ.generateRandomCPQ(10, 2).toQueryGraph();
-			UniqueGraph<Vertex, Predicate> core = g.computeCore();
+			CPQ q = CPQ.generateRandomCPQ(10, 2);
+			System.out.println("Testing: " + q);
+			QueryGraphCPQ g = q.toQueryGraph();
+			System.out.println("computing core...");
+			UniqueGraph<Vertex, Predicate> core = g.computeCore().toUniqueGraph();
 			if(core.getEdgeCount() != g.getEdgeCount()){
 				GraphPanel.show(g);
 				GraphPanel.show(core, g::getVertexLabel, Predicate::getAlias);

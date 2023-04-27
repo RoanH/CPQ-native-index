@@ -14,8 +14,11 @@ import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.RangeList;
 import dev.roanh.gmark.util.UniqueGraph;
@@ -241,7 +244,7 @@ public class Index{
 				if(i == segs.size() || segs.get(i).segId != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
 					Block block = new Block(slice, computeLabels, computeCores);
-//					System.out.println(i + "/" + segs.size() + " | id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
+					System.out.println(i + "/" + segs.size() + " | id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
 //					if(block.reject > 500){
 //						System.out.println(block.cores);
 //					}
@@ -506,11 +509,30 @@ public class Index{
 //			}
 			
 			//all intersections of cores
-			Util.computeAllSubsets(cores, set->{//TODO could limit max set size
-				if(set.size() >= 2){
-					addCore(CPQ.intersect(set));
+			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
+			for(int i = 0; i < graphs.length; i++){
+				graphs[i] = cores.get(i).toQueryGraph();
+			}
+			
+			boolean[][] conflicts = new boolean[cores.size()][];
+			conflicts[0] = new boolean[0];
+			for(int i = 1; i < conflicts.length; i++){
+				QueryGraphCPQ a = graphs[i];
+				conflicts[i] = new boolean[i];
+				for(int j = 0; j < i; j++){
+					QueryGraphCPQ b = graphs[j];
+					conflicts[i][j] = a.isHomomorphicTo(b) || b.isHomomorphicTo(a);
 				}
-			});
+			}
+			
+			computeIntersectionCores(cores, 0, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts);
+			
+			
+//			Util.computeAllSubsets(cores, set->{//TODO could limit max set size
+//				if(set.size() >= 2){
+//					addCore(CPQ.intersect(set));
+//				}
+//			});
 			
 //			if(id == 1813){
 //				System.out.println("--- identity");
@@ -522,6 +544,31 @@ public class Index{
 				for(int i = 0; i < max; i++){
 					addCore(CPQ.intersect(cores.get(i), CPQ.id()));
 				}
+			}
+		}
+		
+		private void computeIntersectionCores(List<CPQ> items, int offset, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts){
+			if(offset >= max){
+				if(set.size() >= 2){//TODO could limit max set size
+					addCore(CPQ.intersect(set));
+				}
+			}else{
+				//don't pick the element
+				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts);
+				
+				//pick the element
+				for(int i = 0; i < conflicts[offset].length; i++){
+					if(selected[i] && conflicts[offset][i]){
+						//can't pick a conflicting item
+						return;
+					}
+				}
+				
+				selected[offset] = true;
+				set.add(items.get(offset));
+				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts);
+				set.remove(set.size() - 1);
+				selected[offset] = false;
 			}
 		}
 		
