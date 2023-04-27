@@ -240,7 +240,11 @@ public class Index{
 			for(int i = 0; i <= segs.size(); i++){
 				if(i == segs.size() || segs.get(i).segId != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
-					Block block = new Block(slice);
+					Block block = new Block(slice, computeLabels, computeCores);
+//					System.out.println(i + "/" + segs.size() + " | id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
+//					if(block.reject > 500){
+//						System.out.println(block.cores);
+//					}
 					
 					if(j != k - 1){
 						for(LabelledPath path : slice){
@@ -268,7 +272,7 @@ public class Index{
 			int lastId = remaining.get(0).segId;
 			for(int i = 0; i <= remaining.size(); i++){
 				if(i == remaining.size() || remaining.get(i).segId != lastId){
-					blocks.add(new Block(remaining.subList(start, i)));
+					blocks.add(new Block(remaining.subList(start, i), computeLabels, computeCores));
 					if(i != remaining.size()){
 						lastId = remaining.get(i).segId;
 						start = i;
@@ -412,14 +416,14 @@ public class Index{
 		return a.pair.compareTo(b.pair);
 	}
 	
-	public final class Block{
+	public static final class Block{
 		private final int id;
 		private List<Pair> paths;
 		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
 		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically only need #canonCores, but this is good for debugging
-		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug
+		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug -- string cache hash code so the only reason to switch is if base64 is expensive
 		
-		private Block(List<LabelledPath> slice){
+		private Block(List<LabelledPath> slice, boolean computeLabels, boolean computeCores){
 			id = slice.get(0).segId;
 			labels = slice.get(0).labels.stream().collect(Collectors.toList());
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
@@ -434,7 +438,7 @@ public class Index{
 				}
 				
 				//these are by definition of a different diameter
-				if(computeCores){
+				if(computeCores){//TODO probably want to differentiate between prepping and computing maybe?
 					cores.addAll(parent.block.cores);
 					canonCores.addAll(parent.block.canonCores);
 				}
@@ -443,6 +447,10 @@ public class Index{
 			if(computeCores){
 				computeCores(slice.get(0).segs);//TODO could be multithreaded by layer
 			}
+		}
+		
+		public int getId(){
+			return id;
 		}
 		
 		public List<Pair> getPaths(){
@@ -457,13 +465,28 @@ public class Index{
 			return paths.get(0).isLoop();
 		}
 		
+		//TODO static inner classes
+		
+		private int reject;
 		private void addCore(CPQ q){
 			if(canonCores.add(new CanonForm(q).toBase64Canon())){//TODO use byte[]
 				cores.add(q);
+//				if(id == 1813){
+//					System.out.println("qa: " + q);
+//				}
+			}else{
+				reject++;
+//				if(id == 1813){
+////					System.out.println("qr: " + q);
+//				}
 			}
 		}
 		
 		private void computeCores(Set<PathPair> segs){
+//			if(id == 1813){
+//				System.out.println("--- joins");
+//			}
+			
 			if(segs.isEmpty()){
 				//TODO technically these were already computed -- here or elsewhere? -- may not be a performance issue though
 				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).forEach(this::addCore);
@@ -478,12 +501,20 @@ public class Index{
 				}
 			}
 			
+//			if(id == 1813){
+//				System.out.println("--- subs");
+//			}
+			
 			//all intersections of cores
 			Util.computeAllSubsets(cores, set->{//TODO could limit max set size
 				if(set.size() >= 2){
 					addCore(CPQ.intersect(set));
 				}
 			});
+			
+//			if(id == 1813){
+//				System.out.println("--- identity");
+//			}
 			
 			//intersect with identity if possible
 			if(isLoop()){
@@ -527,7 +558,7 @@ public class Index{
 	 * that were joined to form a new path.
 	 * @author Roan
 	 */
-	private final class PathPair implements Comparable<PathPair>{
+	private static final class PathPair implements Comparable<PathPair>{
 		/**
 		 * The first path of this pair, also the start of the joined path.
 		 */
@@ -571,7 +602,7 @@ public class Index{
 	 * sequences that exist between that node pair.
 	 * @author Roan
 	 */
-	private final class LabelledPath{
+	private static final class LabelledPath{
 		/**
 		 * The node pair for this labelled path. All stored label
 		 * sequences are between the vertices of this pair.
@@ -686,7 +717,7 @@ public class Index{
 		}
 	}
 	
-	public final class LabelSequence implements Comparable<LabelSequence>{
+	public static final class LabelSequence implements Comparable<LabelSequence>{
 		private Predicate[] data;
 		
 		public LabelSequence(LabelSequence first, LabelSequence last){
@@ -736,7 +767,7 @@ public class Index{
 	 * path or an st-pair.
 	 * @author Roan
 	 */
-	public final class Pair implements Comparable<Pair>{
+	public static final class Pair implements Comparable<Pair>{
 		/**
 		 * The source vertex.
 		 */
