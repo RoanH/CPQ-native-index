@@ -2,8 +2,11 @@ package dev.roanh.cpqindex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -11,10 +14,31 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import dev.roanh.cpqindex.Index.Block;
+import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.UniqueGraph;
 
 public class IndexTest{
+	
+	@Test
+	public void coresBlock1813() throws IOException{
+		try(BufferedReader reader = new BufferedReader(new InputStreamReader(ClassLoader.getSystemResourceAsStream("block1813.txt"), StandardCharsets.UTF_8))){
+			List<String> cores = reader.lines().map(CPQ::parse).map(CanonForm::new).map(CanonForm::toBase64Canon).collect(Collectors.toList());
+			
+			UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
+			Index index = new Index(graph, 2, false, false);
+			for(Block block : index.getBlocks()){
+				if(block.getId() == 1813){
+//					block.com
+				}
+			}
+			
+			
+			
+			
+		}
+	}
 	
 	@Test
 	public void robotsK2NoLabels() throws IOException, ClassNotFoundException{
