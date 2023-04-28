@@ -1,52 +1,228 @@
 package dev.roanh.cpqindex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import dev.roanh.cpqindex.Index.Block;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
+import dev.roanh.gmark.conjunct.cpq.GeneratorCPQ;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.UniqueGraph;
 
 public class IndexTest{
+	private static Map<String, Predicate> symbols = new HashMap<String, Predicate>();
 	
-	@Disabled
-	@Test
-	public void coresBlock1813() throws IOException, IllegalArgumentException, InterruptedException, ExecutionException{
-		try(BufferedReader reader = new BufferedReader(new InputStreamReader(ClassLoader.getSystemResourceAsStream("block1813.txt"), StandardCharsets.UTF_8))){
-			List<String> cores = reader.lines().map(CPQ::parse).map(CanonForm::computeCanon).map(t->{
-				try{
-					return t.get();
-				}catch(InterruptedException | ExecutionException e){
-					throw new RuntimeException(e);
-				}
-			}).map(CanonForm::toBase64Canon).collect(Collectors.toList());
-			
-			UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
-			Index index = new Index(graph, 2, false, false, 1);
-			for(Block block : index.getBlocks()){
-				if(block.getId() == 1813){
-//					block.com
-				}
-			}
-			
-			
-			
-			
+	static{
+		symbols.put("0", new Predicate(0, "0"));
+		symbols.put("1", new Predicate(1, "1"));
+		symbols.put("2", new Predicate(2, "2"));
+		symbols.put("3", new Predicate(3, "3"));
+		
+		try{
+			Main.loadNatives();
+		}catch(UnsatisfiedLinkError | IOException e){
+			e.printStackTrace();
 		}
+	}
+	
+	@Test
+	public void coresTest() throws IllegalArgumentException, InterruptedException, ExecutionException{
+		Predicate l0 = new Predicate(0, "0");
+		Predicate l1 = new Predicate(1, "1");
+		Predicate l2 = new Predicate(2, "2");
+		Predicate l3 = new Predicate(3, "3");
+		
+		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+		g.addUniqueNode(0);
+		g.addUniqueNode(1);
+		g.addUniqueNode(2);
+		g.addUniqueNode(3);
+		g.addUniqueNode(4);
+		g.addUniqueNode(5);
+		g.addUniqueNode(6);
+
+		g.addUniqueEdge(0, 1, l0);
+		g.addUniqueEdge(0, 2, l1);
+		g.addUniqueEdge(1, 3, l0);
+		g.addUniqueEdge(2, 3, l1);
+		g.addUniqueEdge(3, 4, l2);
+		g.addUniqueEdge(3, 5, l3);
+		g.addUniqueEdge(4, 6, l2);
+		g.addUniqueEdge(5, 6, l3);
+		
+		Index index = new Index(g, 2, true, true, 1);
+		index.sort();
+		
+		List<Block> blocks = index.getBlocks();
+		assertEquals(31, blocks.size());
+		Iterator<Block> iter = blocks.iterator();
+		
+		Block block = iter.next();
+		assertEquals("[(0,0)]", block.getPaths().toString());
+		assertEquals("[00⁻, 11⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((0)◦(0⁻))", "((1)◦(1⁻))", "(((0)◦(0⁻)) ∩ ((1)◦(1⁻)))", "(((0)◦(0⁻)) ∩ id)", "(((1)◦(1⁻)) ∩ id)", "((((0)◦(0⁻)) ∩ ((1)◦(1⁻))) ∩ id)");
+		
+		block = iter.next();
+		assertEquals("[(0,1), (1,3)]", block.getPaths().toString());
+		assertEquals("[0]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "(0)");
+		
+		block = iter.next();
+		assertEquals("[(0,2), (2,3)]", block.getPaths().toString());
+		assertEquals("[1]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "(1)");
+		
+		block = iter.next();
+		assertEquals("[(0,3)]", block.getPaths().toString());
+		assertEquals("[00, 11]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((0)◦(0))", "((1)◦(1))", "(((0)◦(0)) ∩ ((1)◦(1)))");
+		
+		block = iter.next();
+		assertEquals("[(1,0), (3,1)]", block.getPaths().toString());
+		assertEquals("[0⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "(0⁻)");
+		
+		block = iter.next();
+		assertEquals("[(1,1)]", block.getPaths().toString());
+		assertEquals("[00⁻, 0⁻0]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((0)◦(0⁻))", "((0⁻)◦(0))", "(((0)◦(0⁻)) ∩ ((0⁻)◦(0)))", "(((0)◦(0⁻)) ∩ id)", "(((0⁻)◦(0)) ∩ id)", "((((0)◦(0⁻)) ∩ ((0⁻)◦(0))) ∩ id)");
+		
+		block = iter.next();
+		assertEquals("[(1,2)]", block.getPaths().toString());
+		assertEquals("[01⁻, 0⁻1]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((0)◦(1⁻))", "((0⁻)◦(1))", "(((0)◦(1⁻)) ∩ ((0⁻)◦(1)))");
+		
+		block = iter.next();
+		assertEquals("[(1,4)]", block.getPaths().toString());
+		assertEquals("[02]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "0◦2");
+		
+		block = iter.next();
+		assertEquals("[(1,5)]", block.getPaths().toString());
+		assertEquals("[03]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "0◦3");
+		
+		block = iter.next();
+		assertEquals("[(2,0), (3,2)]", block.getPaths().toString());
+		assertEquals("[1⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "(1⁻)");
+		
+		block = iter.next();
+		assertEquals("[(2,1)]", block.getPaths().toString());
+		assertEquals("[10⁻, 1⁻0]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((1)◦(0⁻))", "((1⁻)◦(0))", "(((1)◦(0⁻)) ∩ ((1⁻)◦(0)))");
+		
+		block = iter.next();
+		assertEquals("[(2,2)]", block.getPaths().toString());
+		assertEquals("[11⁻, 1⁻1]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((1)◦(1⁻))", "((1⁻)◦(1))", "(((1)◦(1⁻)) ∩ ((1⁻)◦(1)))", "(((1)◦(1⁻)) ∩ id)", "(((1⁻)◦(1)) ∩ id)", "((((1)◦(1⁻)) ∩ ((1⁻)◦(1))) ∩ id)");
+		
+		block = iter.next();
+		assertEquals("[(2,4)]", block.getPaths().toString());
+		assertEquals("[12]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "(1◦2)");
+		
+		block = iter.next();
+		assertEquals("[(2,5)]", block.getPaths().toString());
+		assertEquals("[13]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "(1◦3)");
+		
+		block = iter.next();
+		assertEquals("[(3,0)]", block.getPaths().toString());
+		assertEquals("[0⁻0⁻, 1⁻1⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((0⁻)◦(0⁻))", "((1⁻)◦(1⁻))", "(((0⁻)◦(0⁻)) ∩ ((1⁻)◦(1⁻)))");
+		
+		block = iter.next();
+		assertEquals("[(3,3)]", block.getPaths().toString());
+		assertEquals("[0⁻0, 1⁻1, 22⁻, 33⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((0⁻)◦(0))", "((1⁻)◦(1))", "((2)◦(2⁻))", "((3)◦(3⁻))", "(((2)◦(2⁻)) ∩ ((3)◦(3⁻)))", "(((1⁻)◦(1)) ∩ ((3)◦(3⁻)))", "(((1⁻)◦(1)) ∩ ((2)◦(2⁻)))", "((((1⁻)◦(1)) ∩ ((2)◦(2⁻))) ∩ ((3)◦(3⁻)))", "(((0⁻)◦(0)) ∩ ((3)◦(3⁻)))", "(((0⁻)◦(0)) ∩ ((2)◦(2⁻)))", "((((0⁻)◦(0)) ∩ ((2)◦(2⁻))) ∩ ((3)◦(3⁻)))", "(((0⁻)◦(0)) ∩ ((1⁻)◦(1)))", "((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ ((3)◦(3⁻)))", "((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ ((2)◦(2⁻)))", "(((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ ((2)◦(2⁻))) ∩ ((3)◦(3⁻)))", "(((0⁻)◦(0)) ∩ id)", "(((1⁻)◦(1)) ∩ id)", "(((2)◦(2⁻)) ∩ id)", "(((3)◦(3⁻)) ∩ id)", "((((2)◦(2⁻)) ∩ ((3)◦(3⁻))) ∩ id)", "((((1⁻)◦(1)) ∩ ((3)◦(3⁻))) ∩ id)", "((((1⁻)◦(1)) ∩ ((2)◦(2⁻))) ∩ id)", "(((((1⁻)◦(1)) ∩ ((2)◦(2⁻))) ∩ ((3)◦(3⁻))) ∩ id)", "((((0⁻)◦(0)) ∩ ((3)◦(3⁻))) ∩ id)", "((((0⁻)◦(0)) ∩ ((2)◦(2⁻))) ∩ id)", "(((((0⁻)◦(0)) ∩ ((2)◦(2⁻))) ∩ ((3)◦(3⁻))) ∩ id)", "((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ id)", "(((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ ((3)◦(3⁻))) ∩ id)", "(((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ ((2)◦(2⁻))) ∩ id)", "((((((0⁻)◦(0)) ∩ ((1⁻)◦(1))) ∩ ((2)◦(2⁻))) ∩ ((3)◦(3⁻))) ∩ id)");
+		
+		block = iter.next();
+		assertEquals("[(3,4), (4,6)]", block.getPaths().toString());
+		assertEquals("[2]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "2");
+		
+		block = iter.next();
+		assertEquals("[(3,5), (5,6)]", block.getPaths().toString());
+		assertEquals("[3]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "3");
+		
+		block = iter.next();
+		assertEquals("[(3,6)]", block.getPaths().toString());
+		assertEquals("[22, 33]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((2)◦(2))", "((3)◦(3))", "(((2)◦(2)) ∩ ((3)◦(3)))");
+		
+		block = iter.next();
+		assertEquals("[(4,1)]", block.getPaths().toString());
+		assertEquals("[2⁻0⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "2⁻◦0⁻");
+		
+		block = iter.next();
+		assertEquals("[(4,2)]", block.getPaths().toString());
+		assertEquals("[2⁻1⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "2⁻◦1⁻");
+		
+		block = iter.next();
+		assertEquals("[(4,3), (6,4)]", block.getPaths().toString());
+		assertEquals("[2⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "2⁻");
+		
+		block = iter.next();
+		assertEquals("[(4,4)]", block.getPaths().toString());
+		assertEquals("[22⁻, 2⁻2]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((2)◦(2⁻))", "((2⁻)◦(2))", "(((2)◦(2⁻)) ∩ ((2⁻)◦(2)))", "(((2)◦(2⁻)) ∩ id)", "(((2⁻)◦(2)) ∩ id)", "((((2)◦(2⁻)) ∩ ((2⁻)◦(2))) ∩ id)");
+		
+		block = iter.next();
+		assertEquals("[(4,5)]", block.getPaths().toString());
+		assertEquals("[23⁻, 2⁻3]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((2)◦(3⁻))", "((2⁻)◦(3))", "(((2)◦(3⁻)) ∩ ((2⁻)◦(3)))");
+		
+		block = iter.next();
+		assertEquals("[(5,1)]", block.getPaths().toString());
+		assertEquals("[3⁻0⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "3⁻◦0⁻");
+		
+		block = iter.next();
+		assertEquals("[(5,2)]", block.getPaths().toString());
+		assertEquals("[3⁻1⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "3⁻◦1⁻");
+		
+		block = iter.next();
+		assertEquals("[(5,3), (6,5)]", block.getPaths().toString());
+		assertEquals("[3⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "3⁻");
+		
+		block = iter.next();
+		assertEquals("[(5,4)]", block.getPaths().toString());
+		assertEquals("[32⁻, 3⁻2]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((3)◦(2⁻))", "((3⁻)◦(2))", "(((3)◦(2⁻)) ∩ ((3⁻)◦(2)))");
+		
+		block = iter.next();
+		assertEquals("[(5,5)]", block.getPaths().toString());
+		assertEquals("[33⁻, 3⁻3]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((3)◦(3⁻))", "((3⁻)◦(3))", "(((3)◦(3⁻)) ∩ ((3⁻)◦(3)))", "(((3)◦(3⁻)) ∩ id)", "(((3⁻)◦(3)) ∩ id)", "((((3)◦(3⁻)) ∩ ((3⁻)◦(3))) ∩ id)");
+		
+		block = iter.next();
+		assertEquals("[(6,3)]", block.getPaths().toString());
+		assertEquals("[2⁻2⁻, 3⁻3⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((2⁻)◦(2⁻))", "((3⁻)◦(3⁻))", "(((2⁻)◦(2⁻)) ∩ ((3⁻)◦(3⁻)))");
+		
+		block = iter.next();
+		assertEquals("[(6,6)]", block.getPaths().toString());
+		assertEquals("[2⁻2, 3⁻3]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
+		checkCores(block, "((2⁻)◦(2))", "((3⁻)◦(3))", "(((2⁻)◦(2)) ∩ ((3⁻)◦(3)))", "(((2⁻)◦(2)) ∩ id)", "(((3⁻)◦(3)) ∩ id)", "((((2⁻)◦(2)) ∩ ((3⁻)◦(3))) ∩ id)");
 	}
 	
 	@Test
@@ -148,11 +324,11 @@ public class IndexTest{
 		Index index = new Index(g, 4, false, true, 1);
 		index.sort();
 		
-		List<Index.Block> blocks = index.getBlocks();
+		List<Block> blocks = index.getBlocks();
 		assertEquals(49, blocks.size());
-		Iterator<Index.Block> iter = blocks.iterator();
+		Iterator<Block> iter = blocks.iterator();
 		
-		Index.Block block = iter.next();
+		Block block = iter.next();
 		assertEquals("[(0,0)]", block.getPaths().toString());
 		assertEquals("[00⁻, 11⁻, 000⁻0⁻, 001⁻1⁻, 00⁻00⁻, 00⁻11⁻, 110⁻0⁻, 111⁻1⁻, 11⁻00⁻, 11⁻11⁻]", block.getLabels().stream().map(this::labelsToString).collect(Collectors.toList()).toString());
 		
@@ -361,6 +537,14 @@ public class IndexTest{
 	private List<Entry<List<String>, List<String>>> readGraph(String name) throws IOException, ClassNotFoundException{
 		try(ObjectInputStream obsout = new ObjectInputStream(ClassLoader.getSystemResourceAsStream(name))){
 			return (List<Entry<List<String>, List<String>>>)obsout.readObject();
+		}
+	}
+	
+	private void checkCores(Block block, String... expected) throws IllegalArgumentException, InterruptedException, ExecutionException{
+		assertEquals(expected.length, block.getCanonCores().size());
+		for(String cpq : expected){
+			String canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE)).get().toBase64Canon();
+			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);
 		}
 	}
 }

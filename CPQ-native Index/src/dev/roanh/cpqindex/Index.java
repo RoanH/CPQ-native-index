@@ -16,22 +16,17 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.Consumer;
 
 import dev.roanh.cpqindex.CanonForm.CanonFuture;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.RangeList;
 import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
-import dev.roanh.gmark.util.Util;
 
 /**
  * Implementation of a graph database index based on k-path-bisimulation
@@ -626,6 +621,14 @@ public class Index{
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
+		}
+
+		public Set<String> getCanonCores(){
+			return canonCores;
+		}
+		
+		public List<CPQ> getCores(){
+			return cores;
 		}
 		
 		@Override
