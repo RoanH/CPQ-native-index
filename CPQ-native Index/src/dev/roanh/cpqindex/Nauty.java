@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import dev.roanh.gmark.core.graph.Predicate;
@@ -19,6 +22,11 @@ import dev.roanh.gmark.util.UniqueGraph.GraphNode;
  *
  */
 public class Nauty{
+	protected static final ExecutorService nautyExecutor = Executors.newSingleThreadExecutor(r->{
+		Thread thread = new Thread(r);
+		thread.setName("nauty");
+		return thread;
+	});
 	
 	/**
 	 * Computes a canonical labelling of the given coloured graph. The labelling
@@ -29,8 +37,16 @@ public class Nauty{
 	 * @return The computed relabelling mapping.
 	 */
 	public static int[] computeCanonicalLabelling(ColoredGraph graph){
-		int[] colors = prepareColors(graph);
-		return computeCanonSparse(graph.getAdjacencyList(), colors);
+		try{
+			int[] colors = prepareColors(graph);
+			if(Thread.currentThread().getName().equals("nauty")){
+				return computeCanonSparse(graph.getAdjacencyList(), colors);
+			}else{
+				return nautyExecutor.submit(()->computeCanonSparse(graph.getAdjacencyList(), colors)).get();
+			}
+		}catch(InterruptedException | ExecutionException e){
+			throw new RuntimeException(e);
+		}
 	}
 	
 	/**

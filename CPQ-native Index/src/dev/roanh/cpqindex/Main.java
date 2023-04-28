@@ -53,7 +53,7 @@ public class Main{
 //		System.out.println(canon.toBase64Canon());
 		
 		try{
-			Thread.sleep(20000);
+			Thread.sleep(10000);
 			System.out.println("START");
 			Instant start = Instant.now();//advogato, robots
 			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true, false, 8);//cores, labels
