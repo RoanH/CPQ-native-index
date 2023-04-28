@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import dev.roanh.gmark.core.graph.Predicate;
@@ -22,7 +23,7 @@ import dev.roanh.gmark.util.UniqueGraph.GraphNode;
  *
  */
 public class Nauty{
-	protected static final ExecutorService nautyExecutor = Executors.newSingleThreadExecutor(r->{
+	private static final ExecutorService nautyExecutor = Executors.newSingleThreadExecutor(r->{
 		Thread thread = new Thread(r);
 		thread.setName("nauty");
 		return thread;
@@ -36,17 +37,9 @@ public class Nauty{
 	 * @param graph The graph to compute a canonical labelling of.
 	 * @return The computed relabelling mapping.
 	 */
-	public static int[] computeCanonicalLabelling(ColoredGraph graph){
-		try{
-			int[] colors = prepareColors(graph);
-			if(Thread.currentThread().getName().equals("nauty")){
-				return computeCanonSparse(graph.getAdjacencyList(), colors);
-			}else{
-				return nautyExecutor.submit(()->computeCanonSparse(graph.getAdjacencyList(), colors)).get();
-			}
-		}catch(InterruptedException | ExecutionException e){
-			throw new RuntimeException(e);
-		}
+	public static Future<int[]> computeCanonicalLabelling(ColoredGraph graph){
+		int[] colors = prepareColors(graph);
+		return nautyExecutor.submit(()->computeCanonSparse(graph.getAdjacencyList(), colors));
 	}
 	
 	/**

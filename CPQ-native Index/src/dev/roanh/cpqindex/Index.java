@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Consumer;
 
+import dev.roanh.cpqindex.CanonForm.CanonFuture;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
@@ -136,12 +137,12 @@ public class Index{
 		mapCoresToBlocks();
 	}
 	
-	public List<Pair> query(CPQ cpq) throws IllegalArgumentException{
+	public List<Pair> query(CPQ cpq) throws IllegalArgumentException, InterruptedException, ExecutionException{//TODO how to handle exceptions
 		if(cpq.getDiameter() > k){
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		String key = new CanonForm(cpq).toBase64Canon();//TODO bytes
+		String key = CanonForm.computeCanon(cpq).get().toBase64Canon();//TODO bytes
 		System.out.println("key: " + key);
 		System.out.println("ret: " + coreToBlock.get(key));
 		
@@ -500,9 +501,9 @@ public class Index{
 		//TODO static inner classes
 		
 		private int reject;
-		private void addCore(CPQ q){
-			if(canonCores.add(new CanonForm(q).toBase64Canon())){//TODO use byte[]
-				cores.add(q);
+		private void addCore(CanonForm canon){
+			if(canonCores.add(canon.toBase64Canon())){//TODO use byte[]
+				cores.add(canon.getCPQ());
 //				if(id == 1813){
 //					System.out.println("qa: " + q);
 //				}
@@ -514,24 +515,40 @@ public class Index{
 			}
 		}
 		
+		private void addCores(List<CanonFuture> candidates){
+			try{
+				for(CanonFuture future : candidates){
+					addCore(future.get());
+				}
+			}catch(InterruptedException | ExecutionException e){
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
 		private void computeCores(Set<PathPair> segs){
 //			if(id == 1813){
 //				System.out.println("--- joins");
 //			}
 			
+			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
+			
 			if(segs.isEmpty()){
 				//TODO technically these were already computed -- here or elsewhere? -- may not be a performance issue though
-				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).forEach(this::addCore);
+				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(CanonForm::computeCanon).forEach(candidates::add);
 			}else{
 				//all combinations of cores from previous layers
 				for(PathPair pair : segs){
 					for(CPQ core1 : pair.first.block.cores){
 						for(CPQ core2 : pair.second.block.cores){
-							addCore(CPQ.concat(core1, core2));
+							candidates.add(CanonForm.computeCanon(CPQ.concat(core1, core2)));
 						}
 					}
 				}
 			}
+			
+			addCores(candidates);
+			candidates.clear();
 			
 //			if(id == 1813){
 //				System.out.println("--- subs");
@@ -554,7 +571,8 @@ public class Index{
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts);
+			computeIntersectionCores(cores, 0, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, candidates);
+			addCores(candidates);
 			
 			
 //			Util.computeAllSubsets(cores, set->{//TODO could limit max set size
@@ -569,21 +587,23 @@ public class Index{
 			
 			//intersect with identity if possible
 			if(isLoop()){
+				candidates.clear();
 				final int max = cores.size();
 				for(int i = 0; i < max; i++){
-					addCore(CPQ.intersect(cores.get(i), CPQ.id()));
+					candidates.add(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id())));
 				}
+				addCores(candidates);
 			}
 		}
 		
-		private void computeIntersectionCores(List<CPQ> items, int offset, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts){
+		private void computeIntersectionCores(List<CPQ> items, int offset, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
 			if(offset >= max){
 				if(set.size() >= 2){//TODO could limit max set size
-					addCore(CPQ.intersect(set));
+					candidates.add(CanonForm.computeCanon(CPQ.intersect(set)));
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts);
+				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts, candidates);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -595,7 +615,7 @@ public class Index{
 				
 				selected[offset] = true;
 				set.add(items.get(offset));
-				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts);
+				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts, candidates);
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}

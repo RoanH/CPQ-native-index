@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import dev.roanh.cpqindex.Nauty.ColoredGraph;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
@@ -33,78 +37,65 @@ public class CanonForm{
 	/**
 	 * The vertex ID of the source vertex of the CPQ.
 	 */
-	private int source;
+	private final int source;
 	/**
 	 * The vertex ID of the target vertex of the CPQ.
 	 */
-	private int target;
+	private final int target;
 	/**
 	 * A map containing the IDs of vertices with a specific label.
 	 */
-	private Map<Predicate, Integer> labels = new LinkedHashMap<Predicate, Integer>();
+	private final Map<Predicate, Integer> labels;
 	/**
 	 * The adjacency list form of the canonically labelled transformed CPQ query graph.
 	 */
-	private int[][] graph;
+	private final int[][] graph;
+	private final CPQ cpq;
 	
-	/**
-	 * Constructs a canonical form for the given CPQ.
-	 * @param cpq The CPQ to compute a canonical form for.
-	 */
-	public CanonForm(CPQ cpq){
-		this(cpq.toQueryGraph());
+	private CanonForm(int source, int target, Map<Predicate, Integer> labels, int[][] graph, CPQ cpq){
+		this.source = source;
+		this.target = target;
+		this.labels = labels;
+		this.graph = graph;
+		this.cpq = cpq;
 	}
 	
-	/**
-	 * Constructs a canonical form for the given CPQ query graph. For this the
-	 * core of the provided query graph is used and edge labels are converted to vertices.
-	 * @param graph The CPQ query graph to compute a canonical form for.
-	 * @see QueryGraphCPQ#computeCore()
-	 * @see Util#edgeLabelsToNodes(UniqueGraph)
-	 */
-	public CanonForm(QueryGraphCPQ graph){
-		this(Util.edgeLabelsToNodes(graph.computeCore().toUniqueGraph()), graph.getSourceVertex(), graph.getTargetVertex());
+	public CPQ getCPQ(){
+		return cpq;
 	}
-
-	/**
-	 * Constructs a canonical form for the given transformed CPQ query graph core
-	 * with the given source and target vertices.
-	 * @param core The CPQ query graph core
-	 * @param src The source vertex of the query graph.
-	 * @param trg The target vertex of the query graph.
-	 */
-	private CanonForm(UniqueGraph<Object, Void> core, Vertex src, Vertex trg){
+	
+//	/**
+//	 * Constructs a canonical form for the core of the given CPQ.
+//	 * @param cpq The CPQ to compute a canonical form for.
+//	 * @return A future representing the computed canonical form.
+//	 */
+//	public static Future<CanonForm> computeCanon(){
+//		return computeCanon();
+//	}
+	
+//	/**
+//	 * Constructs a canonical form for the given transformed CPQ query graph core
+//	 * with the given source and target vertices.
+//	 * @param core The CPQ query graph core
+//	 * @param src The source vertex of the query graph.
+//	 * @param trg The target vertex of the query graph.
+//	 * @return A future representing the computed canonical form.
+//	 */
+	public static CanonFuture computeCanon(CPQ cpq){
+		QueryGraphCPQ core = cpq.toQueryGraph().computeCore();
+		UniqueGraph<Object, Void> transformed = Util.edgeLabelsToNodes(core.toUniqueGraph());
+		Vertex src = core.getSourceVertex();
+		Vertex trg = core.getTargetVertex();
+		
+		
 		//compute a coloured graph
-		ColoredGraph input = Nauty.toColoredGraph(core, src, trg);
+		ColoredGraph input = Nauty.toColoredGraph(transformed, src, trg);
 		
 		//compute the canonical labelling with nauty
-		int[] relabel = Nauty.computeCanonicalLabelling(input);
+		Future<int[]> relabel = Nauty.computeCanonicalLabelling(input);
 
-		//compute the inverse of the relabelling function.
-		int[] inv = new int[relabel.length];
- 		for(int i = 0; i < relabel.length; i++){
-			inv[relabel[i]] = i;
-		}
- 		
- 		//relabel the source and target node
- 		source = inv[core.getNode(src).getID()];
- 		target = inv[core.getNode(trg).getID()];
- 		
- 		//relabel labels
- 		for(Entry<Predicate, List<Integer>> pair : input.getLabels()){
- 			labels.put(pair.getKey(), pair.getValue().size());
- 		}
- 		
- 		//relabel the graph itself
- 		graph = new int[relabel.length][];
-		for(int i = 0; i < relabel.length; i++){
-			int[] row = input.getAdjacencyList()[relabel[i]];
-			graph[i] = new int[row.length];
-			for(int j = 0; j < row.length; j++){
-				graph[i][j] = inv[row[j]];
-			}
-			Arrays.sort(graph[i]);
-		}
+		//a future representing the final result
+		return new CanonFuture(input, relabel, transformed.getNode(src).getID(), transformed.getNode(trg).getID(), cpq);
 	}
 	
 	/**
@@ -203,5 +194,77 @@ public class CanonForm{
 	@Override
 	public int hashCode(){
 		return Objects.hashCode(toBinaryCanon());
+	}
+	
+	public static final class CanonFuture implements Future<CanonForm>{
+		private Future<int[]> nautyFuture;
+		private ColoredGraph input;
+		private int src;
+		private int trg;
+		private CPQ cpq;
+		
+		private CanonFuture(ColoredGraph input, Future<int[]> nautyFuture, int src, int trg, CPQ cpq){
+			this.nautyFuture = nautyFuture;
+			this.input = input;
+			this.src = src;
+			this.trg = trg;
+			this.cpq = cpq;
+		}
+
+		@Override
+		public boolean cancel(boolean mayInterruptIfRunning){
+			return nautyFuture.cancel(mayInterruptIfRunning);
+		}
+
+		@Override
+		public boolean isCancelled(){
+			return nautyFuture.isCancelled();
+		}
+
+		@Override
+		public boolean isDone(){
+			return nautyFuture.isDone();
+		}
+
+		@Override
+		public CanonForm get() throws InterruptedException, ExecutionException{
+			return computeResult(nautyFuture.get());
+		}
+
+		@Override
+		public CanonForm get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException{
+			return computeResult(nautyFuture.get(timeout, unit));
+		}
+		
+		private CanonForm computeResult(int[] relabel){
+			//compute the inverse of the relabelling function.
+			int[] inv = new int[relabel.length];
+	 		for(int i = 0; i < relabel.length; i++){
+				inv[relabel[i]] = i;
+			}
+	 		
+	 		//relabel the source and target node
+	 		int source = inv[src];
+	 		int target = inv[trg];
+	 		
+	 		//relabel labels
+	 		Map<Predicate, Integer> labels = new LinkedHashMap<Predicate, Integer>();
+	 		for(Entry<Predicate, List<Integer>> pair : input.getLabels()){
+	 			labels.put(pair.getKey(), pair.getValue().size());
+	 		}
+	 		
+	 		//relabel the graph itself
+	 		int[][] graph = new int[relabel.length][];
+			for(int i = 0; i < relabel.length; i++){
+				int[] row = input.getAdjacencyList()[relabel[i]];
+				graph[i] = new int[row.length];
+				for(int j = 0; j < row.length; j++){
+					graph[i][j] = inv[row[j]];
+				}
+				Arrays.sort(graph[i]);
+			}
+			
+			return new CanonForm(source, target, labels, graph, cpq);
+		}
 	}
 }
