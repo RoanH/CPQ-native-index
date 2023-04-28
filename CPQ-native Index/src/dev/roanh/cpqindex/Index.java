@@ -277,9 +277,16 @@ public class Index{
 					}
 				}
 			}
-
-			for(Future<Block> future : executor.invokeAll(tasks)){
-				blocks.add(future.get());
+			
+			if(j != k - 1){
+				for(Future<Block> future : executor.invokeAll(tasks)){
+					//only CPQk blocks get added directly
+					future.get();
+				}
+			}else{
+				for(Future<Block> future : executor.invokeAll(tasks)){
+					blocks.add(future.get());
+				}
 			}
 		}
 		
