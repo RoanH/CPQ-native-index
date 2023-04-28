@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -23,6 +22,10 @@ import dev.roanh.gmark.util.UniqueGraph.GraphNode;
  *
  */
 public class Nauty{
+	/**
+	 * Executor for nauty tasks as nauty is single threaded. Also runs tasks
+	 * at a slightly higher priority.
+	 */
 	private static final ExecutorService nautyExecutor = Executors.newSingleThreadExecutor(r->{
 		Thread thread = new Thread(r);
 		thread.setName("nauty");

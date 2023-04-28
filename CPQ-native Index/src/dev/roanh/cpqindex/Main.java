@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
@@ -17,10 +16,6 @@ import dev.roanh.gmark.util.GraphPanel;
 import dev.roanh.gmark.util.UniqueGraph;
 
 public class Main{
-	private static Predicate l1 = new Predicate(1, "a");
-	private static Predicate l2 = new Predicate(2, "b");
-	private static Predicate l3 = new Predicate(3, "c");
-	private static Predicate l4 = new Predicate(4, "d");
 
 	public static void main(String[] args){
 		//initialise native bindings
@@ -33,25 +28,6 @@ public class Main{
 		
 		//TODO
 		
-//		CPQ cpq = CPQ.parse("(a◦b)∩(a◦c)∩id∩a");
-//		
-//		cpq = CPQ.intersect(CPQ.labels(l1, l2), CPQ.labels(l1, l2));
-//		cpq = CPQ.parse("((((0⁻ ∩ id) ∩ 0) ∩ ((0◦0)◦1⁻)) ∩ (((1⁻◦1) ∩ (1⁻◦1)) ∩ 0))");
-		
-		
-		
-//		GraphPanel.show(cpq);
-//		GraphPanel.show(cpq.toQueryGraph().computeCore());
-		
-//		CanonForm canon = new CanonForm(cpq);
-//		System.out.println(canon.toStringCanon());
-//		System.out.println(Arrays.toString(canon.toBinaryCanon()));
-//		for(byte b : canon.toBinaryCanon()){
-//			System.out.print(String.format("%1$8s", Integer.toBinaryString(Byte.toUnsignedInt(b))).replace(' ', '0') + " ");
-//		}
-//		System.out.println();
-//		System.out.println(canon.toBase64Canon());
-		
 		try{
 			Thread.sleep(10000);
 			System.out.println("START");
@@ -62,8 +38,6 @@ public class Main{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-//		findRandomCore();
 	}
 	
 	/**

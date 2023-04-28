@@ -137,7 +137,7 @@ public class Index{
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		String key = CanonForm.computeCanon(cpq).get().toBase64Canon();//TODO bytes
+		String key = CanonForm.computeCanon(cpq).get().toBase64Canon();
 		System.out.println("key: " + key);
 		System.out.println("ret: " + coreToBlock.get(key));
 		
@@ -230,7 +230,7 @@ public class Index{
 	
 	private void mapCoresToBlocks(){
 		for(Block block : blocks){
-			for(String core : block.canonCores){//TODO again, should really use the byte form
+			for(String core : block.canonCores){
 				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
 			}
 		}
@@ -455,8 +455,8 @@ public class Index{
 		private final int id;
 		private List<Pair> paths;
 		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
-		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically only need #canonCores, but this is good for debugging
-		private Set<String> canonCores = new HashSet<String>();//TODO should use bytes rather than strings, but strings are easier to debug -- string cache hash code so the only reason to switch is if base64 is expensive
+		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically not needed for the top level
+		private Set<String> canonCores = new HashSet<String>();
 		
 		private Block(List<LabelledPath> slice, boolean computeLabels, boolean computeCores){
 			id = slice.get(0).segId;
@@ -480,7 +480,7 @@ public class Index{
 			}
 			
 			if(computeCores){
-				computeCores(slice.get(0).segs);//TODO could be multithreaded by layer
+				computeCores(slice.get(0).segs);
 			}
 		}
 		
@@ -500,20 +500,12 @@ public class Index{
 			return paths.get(0).isLoop();
 		}
 		
-		//TODO static inner classes
-		
-		private int reject;
+		private int reject;//TODO remove?
 		private void addCore(CanonForm canon){
-			if(canonCores.add(canon.toBase64Canon())){//TODO use byte[]
+			if(canonCores.add(canon.toBase64Canon())){
 				cores.add(canon.getCPQ());
-//				if(id == 1813){
-//					System.out.println("qa: " + q);
-//				}
 			}else{
 				reject++;
-//				if(id == 1813){
-////					System.out.println("qr: " + q);
-//				}
 			}
 		}
 		
@@ -529,10 +521,6 @@ public class Index{
 		}
 		
 		private void computeCores(Set<PathPair> segs){
-//			if(id == 1813){
-//				System.out.println("--- joins");
-//			}
-			
 			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
 			
 			if(segs.isEmpty()){
@@ -551,10 +539,6 @@ public class Index{
 			
 			addCores(candidates);
 			candidates.clear();
-			
-//			if(id == 1813){
-//				System.out.println("--- subs");
-//			}
 			
 			//all intersections of cores
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
@@ -575,17 +559,6 @@ public class Index{
 			
 			computeIntersectionCores(cores, 0, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, candidates);
 			addCores(candidates);
-			
-			
-//			Util.computeAllSubsets(cores, set->{//TODO could limit max set size
-//				if(set.size() >= 2){
-//					addCore(CPQ.intersect(set));
-//				}
-//			});
-			
-//			if(id == 1813){
-//				System.out.println("--- identity");
-//			}
 			
 			//intersect with identity if possible
 			if(isLoop()){
