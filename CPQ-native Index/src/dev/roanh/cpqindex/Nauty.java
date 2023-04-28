@@ -26,6 +26,7 @@ public class Nauty{
 	private static final ExecutorService nautyExecutor = Executors.newSingleThreadExecutor(r->{
 		Thread thread = new Thread(r);
 		thread.setName("nauty");
+		thread.setPriority(Thread.NORM_PRIORITY + 1);
 		return thread;
 	});
 	
