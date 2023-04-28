@@ -27,7 +27,13 @@ public class IndexTest{
 	@Test
 	public void coresBlock1813() throws IOException, IllegalArgumentException, InterruptedException, ExecutionException{
 		try(BufferedReader reader = new BufferedReader(new InputStreamReader(ClassLoader.getSystemResourceAsStream("block1813.txt"), StandardCharsets.UTF_8))){
-			List<String> cores = reader.lines().map(CPQ::parse).map(CanonForm::new).map(CanonForm::toBase64Canon).collect(Collectors.toList());
+			List<String> cores = reader.lines().map(CPQ::parse).map(CanonForm::computeCanon).map(t->{
+				try{
+					return t.get();
+				}catch(InterruptedException | ExecutionException e){
+					throw new RuntimeException(e);
+				}
+			}).map(CanonForm::toBase64Canon).collect(Collectors.toList());
 			
 			UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 			Index index = new Index(graph, 2, false, false, 1);
