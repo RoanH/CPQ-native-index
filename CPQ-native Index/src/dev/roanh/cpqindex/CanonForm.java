@@ -50,8 +50,19 @@ public class CanonForm{
 	 * The adjacency list form of the canonically labelled transformed CPQ query graph.
 	 */
 	private final int[][] graph;
+	/**
+	 * The CPQ this canonical form was constructed from.
+	 */
 	private final CPQ cpq;
 	
+	/**
+	 * Constructs a new canonical form with the given data.
+	 * @param source The ID of the source vertex.
+	 * @param target The ID of the target vertex.
+	 * @param labels The IDs of labelled nodes by label.
+	 * @param graph The canonically labelled graph.
+	 * @param cpq The original CPQ.
+	 */
 	private CanonForm(int source, int target, Map<Predicate, Integer> labels, int[][] graph, CPQ cpq){
 		this.source = source;
 		this.target = target;
@@ -60,33 +71,24 @@ public class CanonForm{
 		this.cpq = cpq;
 	}
 	
+	/**
+	 * Gets the CPQ this canonical form was constructed from.
+	 * @return The CPQ this canonical form was constructed from.
+	 */
 	public CPQ getCPQ(){
 		return cpq;
 	}
 	
-//	/**
-//	 * Constructs a canonical form for the core of the given CPQ.
-//	 * @param cpq The CPQ to compute a canonical form for.
-//	 * @return A future representing the computed canonical form.
-//	 */
-//	public static Future<CanonForm> computeCanon(){
-//		return computeCanon();
-//	}
-	
-//	/**
-//	 * Constructs a canonical form for the given transformed CPQ query graph core
-//	 * with the given source and target vertices.
-//	 * @param core The CPQ query graph core
-//	 * @param src The source vertex of the query graph.
-//	 * @param trg The target vertex of the query graph.
-//	 * @return A future representing the computed canonical form.
-//	 */
+	/**
+	 * Constructs a canonical form for the core of the given CPQ.
+	 * @param cpq The CPQ to compute a canonical form for.
+	 * @return A future representing the computed canonical form.
+	 */
 	public static CanonFuture computeCanon(CPQ cpq){
 		QueryGraphCPQ core = cpq.toQueryGraph().computeCore();
 		UniqueGraph<Object, Void> transformed = Util.edgeLabelsToNodes(core.toUniqueGraph());
 		Vertex src = core.getSourceVertex();
 		Vertex trg = core.getTargetVertex();
-		
 		
 		//compute a coloured graph
 		ColoredGraph input = Nauty.toColoredGraph(transformed, src, trg);
@@ -196,13 +198,41 @@ public class CanonForm{
 		return Objects.hashCode(toBinaryCanon());
 	}
 	
+	/**
+	 * Future representing an ongoing canonisation task.
+	 * @author Roan
+	 */
 	public static final class CanonFuture implements Future<CanonForm>{
+		/**
+		 * The nauty future for the task computing the
+		 * canonical graph relabelling.
+		 */
 		private Future<int[]> nautyFuture;
+		/**
+		 * The input colour graph.
+		 */
 		private ColoredGraph input;
+		/**
+		 * The ID of the input source vertex.
+		 */
 		private int src;
+		/**
+		 * The ID of the input target vertex.
+		 */
 		private int trg;
+		/**
+		 * The original input CPQ.
+		 */
 		private CPQ cpq;
 		
+		/**
+		 * Constructs a new canonisation future.
+		 * @param input The original input graph being canonised.
+		 * @param nautyFuture The future for the relabelling task.
+		 * @param src The original source vertex.
+		 * @param trg The original target vertex.
+		 * @param cpq The original input CPQ.
+		 */
 		private CanonFuture(ColoredGraph input, Future<int[]> nautyFuture, int src, int trg, CPQ cpq){
 			this.nautyFuture = nautyFuture;
 			this.input = input;
@@ -236,6 +266,13 @@ public class CanonForm{
 			return computeResult(nautyFuture.get(timeout, unit));
 		}
 		
+		/**
+		 * Computes the canonical form of the input CPQ
+		 * giving the relabelling mapping from nauty.
+		 * @param relabel The nauty graph relabelling mapping.
+		 * @return The fully computed canonical form.
+		 * @see Nauty#computeCanonicalLabelling(ColoredGraph)
+		 */
 		private CanonForm computeResult(int[] relabel){
 			//compute the inverse of the relabelling function.
 			int[] inv = new int[relabel.length];
