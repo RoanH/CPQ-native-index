@@ -38,6 +38,7 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
 public class Index{
+	public static final int MAX_INTERSECTIONS = 2;
 	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
@@ -315,6 +316,8 @@ public class Index{
 		}
 		
 		executor.shutdown();
+		
+		System.out.println("Total cores: " + blocks.parallelStream().mapToLong(b->b.cores.size()).sum());
 	}
 	
 	//partition according to k-path-bisimulation
@@ -537,6 +540,7 @@ public class Index{
 				}
 			}
 			
+			reject = 0;//TODO probably all cores after this are by definition cores
 			addCores(candidates);
 			candidates.clear();
 			
@@ -572,7 +576,7 @@ public class Index{
 		}
 		
 		private void computeIntersectionCores(List<CPQ> items, int offset, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
-			if(offset >= max){
+			if(offset >= max || set.size() == MAX_INTERSECTIONS){
 				if(set.size() >= 2){//TODO could limit max set size
 					candidates.add(CanonForm.computeCanon(CPQ.intersect(set)));
 				}
