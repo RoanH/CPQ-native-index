@@ -529,10 +529,10 @@ public class Index{
 			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
 			
 			if(segs.isEmpty()){
-				//TODO technically these were already computed -- here or elsewhere? -- may not be a performance issue though
+				//for layer 1 the cores are the label sequences (which are distinct cores)
 				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(candidates::add);
 			}else{
-				//all combinations of cores from previous layers
+				//all combinations of cores from previous layers (this can generate duplicates, but all are cores)
 				for(PathPair pair : segs){
 					for(CPQ core1 : pair.first.block.cores){
 						for(CPQ core2 : pair.second.block.cores){
@@ -544,9 +544,8 @@ public class Index{
 			
 			addCores(candidates);
 			candidates.clear();
-			reject = 0;//TODO probably all cores after this are by definition cores
 			
-			//all intersections of cores
+			//all intersections of cores (exactly, these are all cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
 			for(int i = 0; i < graphs.length; i++){
 				graphs[i] = cores.get(i).toQueryGraph();
@@ -566,7 +565,7 @@ public class Index{
 			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, candidates);
 			addCores(candidates);
 			
-			//intersect with identity if possible
+			//intersect with identity if possible (this can generate duplicates or non-cores)
 			if(isLoop()){
 				candidates.clear();
 				final int max = cores.size();
@@ -579,7 +578,7 @@ public class Index{
 		
 		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
 			if(offset >= max || set.size() == MAX_INTERSECTIONS){
-				if(set.size() >= 2){//TODO could limit max set size
+				if(set.size() >= 2){
 					candidates.add(CanonForm.computeCanon(CPQ.intersect(set), true));
 				}
 			}else{
