@@ -543,7 +543,7 @@ public class IndexTest{
 	private void checkCores(Block block, String... expected) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		assertEquals(expected.length, block.getCanonCores().size());
 		for(String cpq : expected){
-			String canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE)).get().toBase64Canon();
+			String canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).get().toBase64Canon();
 			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);
 		}
 	}

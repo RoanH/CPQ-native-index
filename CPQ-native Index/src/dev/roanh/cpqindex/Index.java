@@ -38,7 +38,7 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
 public class Index{
-	public static final int MAX_INTERSECTIONS = 2;
+	public static final int MAX_INTERSECTIONS = Integer.MAX_VALUE;//TODO
 	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
@@ -138,7 +138,7 @@ public class Index{
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		String key = CanonForm.computeCanon(cpq).get().toBase64Canon();
+		String key = CanonForm.computeCanon(cpq, false).get().toBase64Canon();
 		System.out.println("key: " + key);
 		System.out.println("ret: " + coreToBlock.get(key));
 		
@@ -469,7 +469,7 @@ public class Index{
 			
 			//inherited from previous layer blocks
 			LabelledPath parent = slice.get(0);
-			while(parent.ancestor != null){
+			if(parent.ancestor != null){//only need to go back one level since the previous level already collected the level before that
 				parent = parent.ancestor;
 				if(computeLabels){
 					labels.addAll(parent.labels);
@@ -483,7 +483,7 @@ public class Index{
 			}
 			
 			if(computeCores){
-				computeCores(slice.get(0).segs);
+				computeCores(slice.get(0).segs, cores.size());
 			}
 		}
 		
@@ -506,11 +506,13 @@ public class Index{
 		private int reject;//TODO remove?
 		private void addCore(CanonForm canon){
 			if(canonCores.add(canon.toBase64Canon())){
-				cores.add(canon.getCPQ());
+				cores.add(canon.getCPQ());//TODO don't store this on the last layer?
 			}else{
 				reject++;
+				rejected.add(canon.getCPQ());
 			}
 		}
+		private List<CPQ> rejected = new ArrayList<CPQ>();
 		
 		private void addCores(List<CanonFuture> candidates){
 			try{
@@ -523,26 +525,26 @@ public class Index{
 			}
 		}
 		
-		private void computeCores(Set<PathPair> segs){
+		private void computeCores(Set<PathPair> segs, int skip){//TODO skip is inherited range
 			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
 			
 			if(segs.isEmpty()){
 				//TODO technically these were already computed -- here or elsewhere? -- may not be a performance issue though
-				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(CanonForm::computeCanon).forEach(candidates::add);
+				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(candidates::add);
 			}else{
 				//all combinations of cores from previous layers
 				for(PathPair pair : segs){
 					for(CPQ core1 : pair.first.block.cores){
 						for(CPQ core2 : pair.second.block.cores){
-							candidates.add(CanonForm.computeCanon(CPQ.concat(core1, core2)));
+							candidates.add(CanonForm.computeCanon(CPQ.concat(core1, core2), true));
 						}
 					}
 				}
 			}
 			
-			reject = 0;//TODO probably all cores after this are by definition cores
 			addCores(candidates);
 			candidates.clear();
+			reject = 0;//TODO probably all cores after this are by definition cores
 			
 			//all intersections of cores
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
@@ -561,28 +563,28 @@ public class Index{
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, candidates);
+			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, candidates);
 			addCores(candidates);
 			
 			//intersect with identity if possible
 			if(isLoop()){
 				candidates.clear();
 				final int max = cores.size();
-				for(int i = 0; i < max; i++){
-					candidates.add(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id())));
+				for(int i = skip; i < max; i++){
+					candidates.add(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false));
 				}
 				addCores(candidates);
 			}
 		}
 		
-		private void computeIntersectionCores(List<CPQ> items, int offset, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
+		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
 			if(offset >= max || set.size() == MAX_INTERSECTIONS){
 				if(set.size() >= 2){//TODO could limit max set size
-					candidates.add(CanonForm.computeCanon(CPQ.intersect(set)));
+					candidates.add(CanonForm.computeCanon(CPQ.intersect(set), true));
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts, candidates);
+				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, candidates);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -594,7 +596,7 @@ public class Index{
 				
 				selected[offset] = true;
 				set.add(items.get(offset));
-				computeIntersectionCores(items, offset + 1, max, set, selected, conflicts, candidates);
+				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, candidates);
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}

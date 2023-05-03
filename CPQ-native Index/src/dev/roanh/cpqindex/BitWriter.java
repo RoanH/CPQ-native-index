@@ -37,10 +37,10 @@ public class BitWriter{
 	}
 	
 	/**
-	 * Writes the bits of the given intenger using
+	 * Writes the bits of the given integer using
 	 * exactly the given number of bits.
 	 * @param i The integer to write.
-	 * @param bits The number of bit  to use to
+	 * @param bits The number of bit to use to
 	 *        write the given integer.
 	 */
 	public void writeInt(int i, int bits){

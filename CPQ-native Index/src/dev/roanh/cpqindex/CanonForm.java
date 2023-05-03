@@ -82,10 +82,12 @@ public class CanonForm{
 	/**
 	 * Constructs a canonical form for the core of the given CPQ.
 	 * @param cpq The CPQ to compute a canonical form for.
+	 * @param isCore If the given CPQ is guaranteed to be a core.
 	 * @return A future representing the computed canonical form.
 	 */
-	public static CanonFuture computeCanon(CPQ cpq){
-		QueryGraphCPQ core = cpq.toQueryGraph().computeCore();
+	public static CanonFuture computeCanon(CPQ cpq, boolean isCore){
+		QueryGraphCPQ core = isCore ? cpq.toQueryGraph() : cpq.toQueryGraph().computeCore();
+		
 		UniqueGraph<Object, Void> transformed = Util.edgeLabelsToNodes(core.toUniqueGraph());
 		Vertex src = core.getSourceVertex();
 		Vertex trg = core.getTargetVertex();

@@ -32,7 +32,7 @@ public class Main{
 			Thread.sleep(10000);
 			System.out.println("START");
 			Instant start = Instant.now();//advogato, robots
-			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true, false, 8);//cores, labels
+			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true, false, 1);//cores, labels
 			System.out.println("done: " + Duration.between(start, Instant.now()).toString());
 		}catch(Exception e){
 			// TODO Auto-generated catch block
