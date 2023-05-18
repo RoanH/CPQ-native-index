@@ -1,6 +1,11 @@
 package dev.roanh.cpqindex;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import dev.roanh.cpqindex.CanonForm.CanonFuture;
+import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
 import dev.roanh.gmark.core.graph.Predicate;
@@ -38,12 +44,14 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
 public class Index{
-	public static final int MAX_INTERSECTIONS = Integer.MAX_VALUE;//TODO
+	private final int maxIntersections;
 	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
 	private List<Block> blocks = new ArrayList<Block>();
-	private Map<String, List<Block>> coreToBlock = new HashMap<String, List<Block>>();
+	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
+	private RangeList<Predicate> predicates;
+	@Deprecated
 	private UniqueGraph<Integer, Predicate> graph;
 	
 	//TODO double check private/public of everything
@@ -68,11 +76,11 @@ public class Index{
 		g.addUniqueEdge(0, 2, l0);
 		g.addUniqueEdge(1, 2, l1);
 //		g.addUniqueEdge(2, 1, l1);
-		Index eq = new Index(g, 1, true, true, 1);
+		Index eq = new Index(g, 1, true, true, 1, 2);
 		eq.sort();
 		eq.print();
 		
-		eq = new Index(g, 2, true, true, 1);
+		eq = new Index(g, 2, true, true, 1, 2);
 		eq.sort();
 		eq.print();
 		
@@ -160,16 +168,59 @@ public class Index{
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
-		this(g, k, true, false, threads);
+		this(g, k, threads, Integer.MAX_VALUE);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException, ExecutionException{
+		this(g, k, true, false, threads, maxIntersections);
+	}
+	
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		this.computeCores = computeCores;
 		this.computeLabels = computeLabels;
+		this.maxIntersections = maxIntersections;
 		this.k = k;
 		graph = g;
 		computeBlocks(partition(g), threads);
 		mapCoresToBlocks();
+	}
+	
+	public Index(InputStream source) throws IOException{
+		DataInputStream in = new DataInputStream(source);
+		computeCores = in.readBoolean();
+		computeLabels = in.readBoolean();
+		maxIntersections = in.readInt();
+		k = in.readInt();
+		
+		predicates = new RangeList<Predicate>(in.readInt());
+		for(int i = 0; i < predicates.size(); i++){
+			byte[] data = new byte[in.readInt()];
+			in.readFully(data);
+			predicates.set(i, new Predicate(i, new String(data, StandardCharsets.UTF_8)));
+		}
+		
+		//TODO read core
+	}
+	
+	public void write(OutputStream target) throws IOException{
+		DataOutputStream out = new DataOutputStream(target);
+		out.writeBoolean(computeCores);
+		out.writeBoolean(computeLabels);
+		out.writeInt(maxIntersections);
+		out.writeInt(k);
+		
+		out.writeInt(predicates.size());
+		for(Predicate p : predicates){
+			out.writeInt(p.getID());
+			byte[] str = p.getAlias().getBytes(StandardCharsets.UTF_8);
+			out.writeInt(str.length);
+			out.write(str);
+		}
+		
+		out.writeInt(blocks.size());
+		for(Block block : blocks){
+			block.write(out);
+		}
 	}
 	
 	public List<Pair> query(CPQ cpq) throws IllegalArgumentException, InterruptedException, ExecutionException{//TODO how to handle exceptions
@@ -270,7 +321,7 @@ public class Index{
 	
 	private void mapCoresToBlocks(){
 		for(Block block : blocks){
-			for(String core : block.canonCores){
+			for(CoreHash core : block.canonCores){
 				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
 			}
 		}
@@ -282,6 +333,7 @@ public class Index{
 		
 		for(int j = 0; j < k; j++){
 			List<Callable<Block>> tasks = new ArrayList<Callable<Block>>();
+			final int lk = j + 1;
 			
 			List<LabelledPath> segs = segments.get(j);
 			int start = 0;
@@ -291,12 +343,12 @@ public class Index{
 					List<LabelledPath> slice = segs.subList(start, i);
 					
 					tasks.add(()->{
-						Block block = new Block(slice, computeLabels, computeCores);
+						Block block = new Block(lk, slice);
 						System.out.println("id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
 						return block;
 					});
 					
-					if(j != k - 1){
+					if(lk != k){
 						for(LabelledPath path : slice){
 							unused.put(path.pair, path);
 						}
@@ -313,7 +365,7 @@ public class Index{
 				}
 			}
 			
-			if(j != k - 1){
+			if(lk != k){
 				for(Future<Block> future : executor.invokeAll(tasks)){
 					//only CPQk blocks get added directly
 					future.get();
@@ -337,7 +389,7 @@ public class Index{
 					List<LabelledPath> slice = remaining.subList(start, i);
 					
 					tasks.add(()->{
-						Block block = new Block(slice, computeLabels, computeCores);
+						Block block = new Block(k, slice);
 						System.out.println("id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
 						return block;
 					});
@@ -370,6 +422,7 @@ public class Index{
 		
 		//classes for 1-path-bisimulation
 		Map<Pair, LabelledPath> pathMap = new HashMap<Pair, LabelledPath>();
+		predicates = new RangeList<Predicate>(g.getEdges().stream().mapToInt(e->e.getData().getID()).max().orElse(0));
 		for(GraphEdge<Integer, Predicate> edge : g.getEdges()){
 			//forward and backward edges are just the labels on those edges
 			LabelledPath path = pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), p->new LabelledPath(p, null));
@@ -379,6 +432,8 @@ public class Index{
 			path = pathMap.computeIfAbsent(new Pair(edge.getTarget(), edge.getSource()), p->new LabelledPath(p, null));
 			path.addLabel(edge.getData().getInverse());
 			history.put(path.pair, path);
+			
+			predicates.set(edge.getData(), edge.getData());
 		}
 		
 		//sort 1-path
@@ -493,14 +548,16 @@ public class Index{
 		return a.pair.compareTo(b.pair);
 	}
 	
-	public static final class Block{
+	public final class Block{
 		private final int id;
+		private final int k;
 		private List<Pair> paths;
 		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
-		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically not needed for the top level
-		private Set<String> canonCores = new HashSet<String>();
+		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically not needed for the top level -- not restored after write read
+		private Set<CoreHash> canonCores = new HashSet<CoreHash>();
 		
-		private Block(List<LabelledPath> slice, boolean computeLabels, boolean computeCores){
+		private Block(int k, List<LabelledPath> slice){
+			this.k = k;
 			id = slice.get(0).segId;
 			labels = slice.get(0).labels.stream().collect(Collectors.toList());
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
@@ -526,6 +583,48 @@ public class Index{
 			}
 		}
 		
+		private Block(DataInputStream in) throws IOException{
+			id = in.readInt();
+			k = in.readInt();
+			
+			int len = in.readInt();
+			paths = new ArrayList<Pair>(len);
+			for(int i = 0; i < len; i++){
+				paths.add(new Pair(in));
+			}
+			
+			len = in.readInt();
+			labels = new ArrayList<LabelSequence>(len);
+			for(int i = 0; i < len; i++){
+				labels.add(new LabelSequence(in, predicates));
+			}
+			
+			len = in.readInt();
+			for(int i = 0; i < len; i++){
+				canonCores.add(CoreHash.read(in));
+			}
+		}
+		
+		private void write(DataOutputStream out) throws IOException{
+			out.writeInt(id);
+			out.writeInt(k);
+			
+			out.writeInt(paths.size());
+			for(Pair pair : paths){
+				pair.write(out);
+			}
+			
+			out.writeInt(labels.size());
+			for(LabelSequence seq : labels){
+				seq.write(out);
+			}
+			
+			out.writeInt(canonCores.size());
+			for(CoreHash core : canonCores){
+				core.write(out);
+			}
+		}
+
 		public int getId(){
 			return id;
 		}
@@ -544,7 +643,7 @@ public class Index{
 		
 		private int reject;//TODO remove?
 		private void addCore(CanonForm canon){
-			if(canonCores.add(canon.toBase64Canon())){
+			if(canonCores.add(canon.toHashCanon())){
 				cores.add(canon.getCPQ());//TODO don't store this on the last layer?
 			}else{
 				reject++;
@@ -616,7 +715,7 @@ public class Index{
 		}
 		
 		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
-			if(offset >= max || set.size() == MAX_INTERSECTIONS){
+			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
 					candidates.add(CanonForm.computeCanon(CPQ.intersect(set), true));
 				}
@@ -640,7 +739,7 @@ public class Index{
 			}
 		}
 
-		public Set<String> getCanonCores(){
+		public Set<CoreHash> getCanonCores(){
 			return canonCores;
 		}
 		
@@ -860,6 +959,25 @@ public class Index{
 			System.arraycopy(first.data, 0, data, 0, first.data.length);
 			System.arraycopy(last.data, 0, data, first.data.length, last.data.length);
 		}
+		
+		public LabelSequence(DataInputStream in, RangeList<Predicate> labels) throws IOException{
+			data = new Predicate[in.readInt()];
+			for(int i = 0; i < data.length; i++){
+				int id = in.readInt();
+				if(id < 0){
+					data[i] = labels.get(-id - 1).getInverse();
+				}else{
+					data[i] = labels.get(id);
+				}
+			}
+		}
+
+		public void write(DataOutputStream out) throws IOException{
+			out.writeInt(data.length);
+			for(Predicate p : data){
+				out.writeInt(p.isInverse() ? (-p.getID() - 1) : p.getID());
+			}
+		}
 
 		public LabelSequence(Predicate label){
 			data = new Predicate[]{label};
@@ -922,6 +1040,16 @@ public class Index{
 			this.trg = trg;
 		}
 		
+		private Pair(DataInputStream in) throws IOException{
+			src = in.readInt();
+			trg = in.readInt();
+		}
+		
+		private void write(DataOutputStream out) throws IOException{
+			out.writeInt(src);
+			out.writeInt(trg);
+		}
+
 		/**
 		 * Get the source vertex of this pair.
 		 * @return The source vertex of this pair.

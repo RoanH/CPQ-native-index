@@ -1,5 +1,8 @@
 package dev.roanh.cpqindex;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -190,6 +193,10 @@ public class CanonForm{
 		return Base64.getEncoder().encodeToString(toBinaryCanon());
 	}
 	
+	public CoreHash toHashCanon(){
+		return new CoreHash(toBinaryCanon());
+	}
+	
 	@Override
 	public boolean equals(Object obj){
 		return obj instanceof CanonForm && Arrays.equals(toBinaryCanon(), ((CanonForm)obj).toBinaryCanon());
@@ -304,6 +311,37 @@ public class CanonForm{
 			}
 			
 			return new CanonForm(source, target, labels, graph, cpq);
+		}
+	}
+	
+	public static final class CoreHash{
+		private final byte[] canon;
+		private int hash;
+		
+		public CoreHash(byte[] canon){
+			this.canon = canon;
+			hash = canon.hashCode();
+		}
+		
+		public void write(DataOutputStream out) throws IOException{
+			out.writeInt(canon.length);
+			out.write(canon);
+		}
+		
+		@Override
+		public int hashCode(){
+			return hash;
+		}
+		
+		@Override
+		public boolean equals(Object obj){
+			return Arrays.equals(canon, ((CoreHash)obj).canon);
+		}
+		
+		public static final CoreHash read(DataInputStream in) throws IOException{
+			byte[] data = new byte[in.readInt()];
+			in.readFully(data);
+			return new CoreHash(data);
 		}
 	}
 }
