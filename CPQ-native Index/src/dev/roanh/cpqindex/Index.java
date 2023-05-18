@@ -58,28 +58,67 @@ public class Index{
 		
 		Predicate l0 = new Predicate(0, "0");
 		Predicate l1 = new Predicate(1, "1");
-		Predicate l2 = new Predicate(2, "2");
-		Predicate l3 = new Predicate(3, "3");
 		
 		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
 		g.addUniqueNode(0);
 		g.addUniqueNode(1);
 		g.addUniqueNode(2);
-		g.addUniqueNode(3);
-		g.addUniqueNode(4);
-		g.addUniqueNode(5);
-		g.addUniqueNode(6);
 
 		g.addUniqueEdge(0, 1, l0);
-		g.addUniqueEdge(0, 2, l1);
-		g.addUniqueEdge(1, 3, l0);
-		g.addUniqueEdge(2, 3, l1);
-		g.addUniqueEdge(3, 4, l2);
-		g.addUniqueEdge(3, 5, l3);
-		g.addUniqueEdge(4, 6, l2);
-		g.addUniqueEdge(5, 6, l3);
+		g.addUniqueEdge(0, 2, l0);
+		g.addUniqueEdge(1, 2, l1);
+//		g.addUniqueEdge(2, 1, l1);
+		Index eq = new Index(g, 1, true, true, 1);
+		eq.sort();
+		eq.print();
 		
-		Index eq = new Index(g, 2, true, true, 1);
+		eq = new Index(g, 2, true, true, 1);
+		eq.sort();
+		eq.print();
+		
+		//OK
+//		Predicate l0 = new Predicate(0, "0");
+//		Predicate l1 = new Predicate(1, "1");
+//		
+//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+//		g.addUniqueNode(0);
+//		g.addUniqueNode(1);
+//		g.addUniqueNode(2);
+//		g.addUniqueNode(3);
+//
+//		g.addUniqueEdge(0, 1, l0);
+//		g.addUniqueEdge(0, 2, l0);
+//		g.addUniqueEdge(1, 3, l1);
+//		g.addUniqueEdge(2, 3, l1);
+//		g.addUniqueEdge(1, 2, l1);
+////		g.addUniqueEdge(2, 1, l1);
+		
+//		Index eq = new Index(g, 2, true, true, 1);
+		
+//		Predicate l0 = new Predicate(0, "0");
+//		Predicate l1 = new Predicate(1, "1");
+//		Predicate l2 = new Predicate(2, "2");
+//		Predicate l3 = new Predicate(3, "3");
+//		
+//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
+//		g.addUniqueNode(0);
+//		g.addUniqueNode(1);
+//		g.addUniqueNode(2);
+//		g.addUniqueNode(3);
+//		g.addUniqueNode(4);
+//		g.addUniqueNode(5);
+//		g.addUniqueNode(6);
+//
+//		g.addUniqueEdge(0, 1, l0);
+//		g.addUniqueEdge(0, 2, l1);
+//		g.addUniqueEdge(1, 3, l0);
+//		g.addUniqueEdge(2, 3, l1);
+//		g.addUniqueEdge(3, 4, l2);
+//		g.addUniqueEdge(3, 5, l3);
+//		g.addUniqueEdge(4, 6, l2);
+//		g.addUniqueEdge(5, 6, l3);
+//		
+//		Index eq = new Index(g, 2, true, true, 1);
 		
 //		Predicate a = new Predicate(0, "0");
 //		Predicate b = new Predicate(1, "1");
@@ -109,15 +148,15 @@ public class Index{
 //		
 //		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2);
 		
-		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
-		eq.sort();
-		eq.blocks.forEach(System.out::println);
+//		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
+//		eq.sort();
+//		eq.blocks.forEach(System.out::println);
+//		
+//		eq.print();
 		
-		eq.print();
-		
-		CPQ q = CPQ.labels(l3, l3.getInverse());
-		System.out.println("run: " + q);
-		System.out.println(eq.query(q));
+//		CPQ q = CPQ.labels(l3, l3.getInverse());
+//		System.out.println("run: " + q);
+//		System.out.println(eq.query(q));
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
@@ -801,9 +840,21 @@ public class Index{
 		}
 	}
 	
+	/**
+	 * Class representing a sequence of edge labels.
+	 * @author Roan
+	 */
 	public static final class LabelSequence implements Comparable<LabelSequence>{
+		/**
+		 * An ordered array of the labels that make up the label sequence.
+		 */
 		private Predicate[] data;
 		
+		/**
+		 * Constructs a new label sequence by joining the given sequences.
+		 * @param first The start of the new label sequence.
+		 * @param last The end of the new label sequence.
+		 */
 		public LabelSequence(LabelSequence first, LabelSequence last){
 			data = new Predicate[first.data.length + last.data.length];
 			System.arraycopy(first.data, 0, data, 0, first.data.length);
