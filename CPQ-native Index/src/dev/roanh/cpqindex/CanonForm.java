@@ -320,7 +320,7 @@ public class CanonForm{
 		
 		public CoreHash(byte[] canon){
 			this.canon = canon;
-			hash = canon.hashCode();
+			hash = Arrays.hashCode(canon);
 		}
 		
 		public void write(DataOutputStream out) throws IOException{

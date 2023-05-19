@@ -48,6 +48,8 @@ public class Index{
 	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
+	private final boolean verbose;//storage of labels & cpqs
+	
 	private List<Block> blocks = new ArrayList<Block>();
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
 	private RangeList<Predicate> predicates;
@@ -76,11 +78,11 @@ public class Index{
 		g.addUniqueEdge(0, 2, l0);
 		g.addUniqueEdge(1, 2, l1);
 //		g.addUniqueEdge(2, 1, l1);
-		Index eq = new Index(g, 1, true, true, 1, 2);
+		Index eq = new Index(g, 1, true, true, 1, 2, true);
 		eq.sort();
 		eq.print();
 		
-		eq = new Index(g, 2, true, true, 1, 2);
+		eq = new Index(g, 2, true, true, 1, 2, true);
 		eq.sort();
 		eq.print();
 		
@@ -172,14 +174,19 @@ public class Index{
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException, ExecutionException{
-		this(g, k, true, false, threads, maxIntersections);
+		this(g, k, true, false, threads, maxIntersections, false);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
+		this(g, k, computeCores, computeLabels, threads, Integer.MAX_VALUE, false);
+	}
+	
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, boolean verbose) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		this.computeCores = computeCores;
 		this.computeLabels = computeLabels;
 		this.maxIntersections = maxIntersections;
 		this.k = k;
+		this.verbose = verbose;
 		graph = g;
 		computeBlocks(partition(g), threads);
 		mapCoresToBlocks();
@@ -191,6 +198,7 @@ public class Index{
 		computeLabels = in.readBoolean();
 		maxIntersections = in.readInt();
 		k = in.readInt();
+		verbose = in.readBoolean();
 		
 		predicates = new RangeList<Predicate>(in.readInt());
 		for(int i = 0; i < predicates.size(); i++){
@@ -199,7 +207,10 @@ public class Index{
 			predicates.set(i, new Predicate(i, new String(data, StandardCharsets.UTF_8)));
 		}
 		
-		//TODO read core
+		int len = in.readInt();
+		for(int i = 0; i < len; i++){
+			blocks.add(new Block(in));
+		}
 	}
 	
 	public void write(OutputStream target) throws IOException{
@@ -208,6 +219,7 @@ public class Index{
 		out.writeBoolean(computeLabels);
 		out.writeInt(maxIntersections);
 		out.writeInt(k);
+		out.writeBoolean(verbose);
 		
 		out.writeInt(predicates.size());
 		for(Predicate p : predicates){
@@ -228,7 +240,7 @@ public class Index{
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		String key = CanonForm.computeCanon(cpq, false).get().toBase64Canon();
+		CoreHash key = CanonForm.computeCanon(cpq, false).get().toHashCanon();
 		System.out.println("key: " + key);
 		System.out.println("ret: " + coreToBlock.get(key));
 		
@@ -422,7 +434,7 @@ public class Index{
 		
 		//classes for 1-path-bisimulation
 		Map<Pair, LabelledPath> pathMap = new HashMap<Pair, LabelledPath>();
-		predicates = new RangeList<Predicate>(g.getEdges().stream().mapToInt(e->e.getData().getID()).max().orElse(0));
+		predicates = new RangeList<Predicate>(1 + g.getEdges().stream().mapToInt(e->e.getData().getID()).max().orElse(0));
 		for(GraphEdge<Integer, Predicate> edge : g.getEdges()){
 			//forward and backward edges are just the labels on those edges
 			LabelledPath path = pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), p->new LabelledPath(p, null));
@@ -552,34 +564,41 @@ public class Index{
 		private final int id;
 		private final int k;
 		private List<Pair> paths;
-		private List<LabelSequence> labels;//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
+		private List<LabelSequence> labels = new ArrayList<LabelSequence>();//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
 		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically not needed for the top level -- not restored after write read
 		private Set<CoreHash> canonCores = new HashSet<CoreHash>();
 		
+		/**
+		 * The block from the previous layer that the paths in this block were stored at.
+		 * @see #paths
+		 */
+		private Block ancestor;
+		private List<BlockPair> combinations;
+		
 		private Block(int k, List<LabelledPath> slice){
 			this.k = k;
-			id = slice.get(0).segId;
-			labels = slice.get(0).labels.stream().collect(Collectors.toList());
+			
+			LabelledPath range = slice.get(0);
+			id = range.segId;
 			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
 			slice.forEach(s->s.block = this);
 			
-			//inherited from previous layer blocks
-			LabelledPath parent = slice.get(0);
-			if(parent.ancestor != null){//only need to go back one level since the previous level already collected the level before that
-				parent = parent.ancestor;
+			if(computeLabels || k == 1){
+				//we need labels to compute cores for k = 1
+				labels.addAll(range.labels);
+			}
+			
+			if(range.ancestor != null){
+				ancestor = range.ancestor.block;
 				if(computeLabels){
-					labels.addAll(parent.labels);
-				}
-				
-				//these are by definition of a different diameter
-				if(computeCores){//TODO probably want to differentiate between prepping and computing maybe?
-					cores.addAll(parent.block.cores);
-					canonCores.addAll(parent.block.canonCores);
+					labels.addAll(ancestor.labels);
 				}
 			}
 			
+			combinations = range.segs.stream().map(BlockPair::new).toList();
+			
 			if(computeCores){
-				computeCores(slice.get(0).segs, cores.size());
+				computeCores();//TODO remove
 			}
 		}
 		
@@ -663,17 +682,37 @@ public class Index{
 			}
 		}
 		
-		private void computeCores(Set<PathPair> segs, int skip){//TODO skip is inherited range
+		private void computeCores(){
+			//inherited from previous layer blocks
+			if(ancestor != null){//only need to go back one level since the previous level already collected the level before that
+				
+				
+				//these are by definition of a different diameter
+				//if(computeCores){//TODO probably want to differentiate between prepping and computing maybe?
+					
+					canonCores.addAll(ancestor.canonCores);
+					if(verbose || k != Index.this.k){
+						//we do not need to store core structure for the last layer
+						cores.addAll(ancestor.cores);
+					}
+				//}
+			}
+			
+			
+//			if(computeCores){
+//			}
+				
+			final int skip = cores.size();//TODO skip is inherited range
 			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
 			
-			if(segs.isEmpty()){
+			if(combinations.isEmpty()){
 				//for layer 1 the cores are the label sequences (which are distinct cores)
 				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(candidates::add);
 			}else{
 				//all combinations of cores from previous layers (this can generate duplicates, but all are cores)
-				for(PathPair pair : segs){
-					for(CPQ core1 : pair.first.block.cores){
-						for(CPQ core2 : pair.second.block.cores){
+				for(BlockPair pair : combinations){
+					for(CPQ core1 : pair.first.cores){
+						for(CPQ core2 : pair.second.cores){
 							candidates.add(CanonForm.computeCanon(CPQ.concat(core1, core2), true));
 						}
 					}
@@ -1015,6 +1054,13 @@ public class Index{
 		}
 	}
 	
+	private static final record BlockPair(Block first, Block second){
+		
+		private BlockPair(PathPair pair){
+			this(pair.first.block, pair.second.block);
+		}
+	}
+	
 	/**
 	 * Represents a pair of two vertices, also referred to as a
 	 * path or an st-pair.
@@ -1096,5 +1142,9 @@ public class Index{
 			int cmp = Integer.compare(src, o.src);
 			return cmp == 0 ? Integer.compare(trg, o.trg) : cmp;
 		}
+	}
+	
+	public static interface ProgressListener{
+		
 	}
 }

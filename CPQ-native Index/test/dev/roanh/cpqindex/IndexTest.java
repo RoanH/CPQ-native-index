@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.cpqindex.Index.Block;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.GeneratorCPQ;
@@ -543,7 +544,7 @@ public class IndexTest{
 	private void checkCores(Block block, String... expected) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		assertEquals(expected.length, block.getCanonCores().size());
 		for(String cpq : expected){
-			String canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).get().toBase64Canon();
+			CoreHash canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).get().toHashCanon();
 			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);
 		}
 	}
