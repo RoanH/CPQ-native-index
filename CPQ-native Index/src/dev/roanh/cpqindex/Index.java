@@ -11,13 +11,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -263,9 +260,9 @@ public class Index{
 			
 			List<LabelledPath> segs = segments.get(j);
 			int start = 0;
-			int lastId = segs.get(0).segId;
+			int lastId = segs.get(0).getSegmentId();
 			for(int i = 0; i <= segs.size(); i++){
-				if(i == segs.size() || segs.get(i).segId != lastId){
+				if(i == segs.size() || segs.get(i).getSegmentId() != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
 					
 					tasks.add(()->{
@@ -276,16 +273,16 @@ public class Index{
 					
 					if(lk != k){
 						for(LabelledPath path : slice){
-							unused.put(path.pair, path);
+							unused.put(path.getPair(), path);
 						}
 					}else{
 						for(LabelledPath path : slice){
-							unused.remove(path.pair);
+							unused.remove(path.getPair());
 						}
 					}
 					
 					if(i != segs.size()){
-						lastId = segs.get(i).segId;
+						lastId = segs.get(i).getSegmentId();
 						start = i;
 					}
 				}
@@ -304,14 +301,14 @@ public class Index{
 		}
 		
 		//any remaining pairs denote blocks from previous layers
-		List<LabelledPath> remaining = unused.values().stream().sorted(Comparator.comparing(l->l.segId)).collect(Collectors.toList());
+		List<LabelledPath> remaining = unused.values().stream().sorted(Comparator.comparing(LabelledPath::getSegmentId)).collect(Collectors.toList());
 		if(!remaining.isEmpty()){
 			List<Callable<Block>> tasks = new ArrayList<Callable<Block>>();
 			
 			int start = 0;
-			int lastId = remaining.get(0).segId;
+			int lastId = remaining.get(0).getSegmentId();
 			for(int i = 0; i <= remaining.size(); i++){
-				if(i == remaining.size() || remaining.get(i).segId != lastId){
+				if(i == remaining.size() || remaining.get(i).getSegmentId() != lastId){
 					List<LabelledPath> slice = remaining.subList(start, i);
 					
 					tasks.add(()->{
@@ -321,7 +318,7 @@ public class Index{
 					});
 					
 					if(i != remaining.size()){
-						lastId = remaining.get(i).segId;
+						lastId = remaining.get(i).getSegmentId();
 						start = i;
 					}
 				}
@@ -353,11 +350,11 @@ public class Index{
 			//forward and backward edges are just the labels on those edges
 			LabelledPath path = pathMap.computeIfAbsent(new Pair(edge.getSource(), edge.getTarget()), p->new LabelledPath(p, null));
 			path.addLabel(edge.getData());
-			history.put(path.pair, path);
+			history.put(path.getPair(), path);
 			
 			path = pathMap.computeIfAbsent(new Pair(edge.getTarget(), edge.getSource()), p->new LabelledPath(p, null));
 			path.addLabel(edge.getData().getInverse());
-			history.put(path.pair, path);
+			history.put(path.getPair(), path);
 			
 			predicates.set(edge.getData(), edge.getData());
 		}
@@ -372,12 +369,12 @@ public class Index{
 		LabelledPath prev = null;
 		int id = 1;
 		for(LabelledPath seg : segOne){
-			if(prev != null && (!seg.labels.equals(prev.labels) || seg.isLoop() ^ prev.isLoop())){
+			if(prev != null && (!seg.equalLabels(prev) || seg.isLoop() ^ prev.isLoop())){
 				//if labels and cyclic patterns (loop) are not the same a new ID is started
 				id++;
 			}
 
-			seg.segId = id;
+			seg.setSegmentId(id);
 			prev = seg;
 		}
 		
@@ -391,11 +388,11 @@ public class Index{
 				
 				for(LabelledPath seg : segments.get(k1)){
 					for(LabelledPath end : segments.get(k2)){
-						if(seg.pair.getTarget() != end.pair.getSource()){
+						if(seg.getTarget() != end.getSource()){
 							continue;
 						}
 						
-						Pair key = new Pair(seg.pair.getSource(), end.pair.getTarget());
+						Pair key = new Pair(seg.getSource(), end.getTarget());
 						LabelledPath path = pathMap.computeIfAbsent(key, p->{
 							LabelledPath newPath = new LabelledPath(p, history.get(p));
 							history.put(p, newPath);
@@ -404,8 +401,8 @@ public class Index{
 						
 						path.addSegment(seg, end);
 						if(k2 == 0 && computeLabels){//slight optimisation, since we only need one combination to find all paths
-							for(LabelSequence labels : seg.labels){
-								for(LabelSequence label : end.labels){
+							for(LabelSequence labels : seg.getLabels()){
+								for(LabelSequence label : end.getLabels()){
 									path.addLabel(labels, label);
 								}
 							}
@@ -417,7 +414,7 @@ public class Index{
 			//sort
 			System.out.println("Start sort: " + (i + 1));
 			List<LabelledPath> segs = segments.get(i);
-			pathMap.values().forEach(s->s.segHash = s.segs.hashCode());
+			pathMap.values().forEach(LabelledPath::cacheHashCode);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
 			System.out.println("end sort");
 
@@ -429,7 +426,7 @@ public class Index{
 					id++;
 				}
 
-				path.segId = id;
+				path.setSegmentId(id);
 				prev = path;
 			}
 		}
@@ -457,7 +454,7 @@ public class Index{
 			return cmp;
 		}
 
-		return a.pair.compareTo(b.pair);
+		return a.comparePathTo(b);
 	}
 	
 	private int sortOnePath(LabelledPath a, LabelledPath b){
@@ -471,7 +468,7 @@ public class Index{
 			return cmp;
 		}
 
-		return a.pair.compareTo(b.pair);
+		return a.comparePathTo(b);
 	}
 	
 	public final class Block{
@@ -493,23 +490,23 @@ public class Index{
 			this.k = k;
 			
 			LabelledPath range = slice.get(0);
-			id = range.segId;
-			paths = slice.stream().map(p->p.pair).collect(Collectors.toList());
-			slice.forEach(s->s.block = this);
+			id = range.getSegmentId();
+			paths = slice.stream().map(LabelledPath::getPair).collect(Collectors.toList());
+			slice.forEach(s->s.setBlock(this));
 			
 			if(computeLabels || k == 1){
 				//we need labels to compute cores for k = 1
-				labels.addAll(range.labels);
+				labels.addAll(range.getLabels());
 			}
 			
-			if(range.ancestor != null){
-				ancestor = range.ancestor.block;
+			if(range.hasAncestor()){
+				ancestor = range.getAncestor().getBlock();
 				if(computeLabels){
 					labels.addAll(ancestor.labels);
 				}
 			}
 			
-			combinations = range.segs.stream().map(BlockPair::new).toList();
+			combinations = range.getSegments().stream().map(BlockPair::new).toList();
 			
 			if(computeCores){
 				computeCores();//TODO remove
@@ -731,22 +728,22 @@ public class Index{
 	 * that were joined to form a new path.
 	 * @author Roan
 	 */
-	private static final class PathPair implements Comparable<PathPair>{
+	static final class PathPair implements Comparable<PathPair>{
 		/**
 		 * The first path of this pair, also the start of the joined path.
 		 */
-		private final LabelledPath first;
+		final LabelledPath first;
 		/**
 		 * The second path of this pair, also the end of the joined path.
 		 */
-		private final LabelledPath second;
+		final LabelledPath second;
 		
 		/**
 		 * Constructs a new path pair with the given paths.
 		 * @param first The first and start path.
 		 * @param second The second and end path.
 		 */
-		private PathPair(LabelledPath first, LabelledPath second){
+		PathPair(LabelledPath first, LabelledPath second){
 			this.first = first;
 			this.second = second;
 		}
@@ -764,134 +761,15 @@ public class Index{
 
 		@Override
 		public int compareTo(PathPair o){
-			int cmp = Integer.compare(first.segId, o.first.segId);
-			return cmp == 0 ? Integer.compare(second.segId, o.second.segId) : cmp;
-		}
-	}
-	
-	/**
-	 * Represents a path through the graph identified by
-	 * a source target node pair and a number of label
-	 * sequences that exist between that node pair.
-	 * @author Roan
-	 */
-	private static final class LabelledPath{
-		/**
-		 * The node pair for this labelled path. All stored label
-		 * sequences are between the vertices of this pair.
-		 */
-		private final Pair pair;
-		/**
-		 * The label sequences that were found that exist between
-		 * the vertices of the node pair for this path.
-		 */
-		private SortedSet<LabelSequence> labels = new TreeSet<LabelSequence>();
-		
-		//id stuff
-		private int segId;
-		private Block block;
-		
-		private SortedSet<PathPair> segs = new TreeSet<PathPair>();//effectively a history of blocks that were combined to form this path
-		private int segHash;//TODO set from a different place kinda eh
-		private LabelledPath ancestor;
-		
-		private LabelledPath(Pair pair, LabelledPath ancestor){
-			this.pair = pair;
-			this.ancestor = ancestor;
-		}
-		
-		public int compareLabelsTo(LabelledPath other){
-			return compare(labels, other.labels);
-		}
-
-		public int compareSegmentsTo(LabelledPath other){
-			int cmp = Integer.compare(segHash, other.segHash);
-			if(cmp != 0){
-				return cmp;
-			}
-			
-			cmp = Boolean.compare(ancestor == null, other.ancestor == null);
-			if(cmp != 0){
-				return cmp;
-			}
-			
-			if(ancestor != null){
-				cmp = Integer.compare(ancestor.segId, other.ancestor.segId);
-				if(cmp != 0){
-					return cmp;
-				}
-			}
-			
-			return compare(segs, other.segs);
-		}
-		
-		public <T extends Comparable<T>> int compare(SortedSet<T> a, SortedSet<T> b){
-			int cmp = Integer.compare(a.size(), b.size());
-			if(cmp == 0){
-				Iterator<T> iter = b.iterator();
-				for(T seg : a){
-					cmp = seg.compareTo(iter.next());
-					if(cmp != 0){
-						return cmp;
-					}
-				}
-				
-				return 0;
-			}else{
-				return cmp;
-			}
-		}
-		
-		public void addSegment(LabelledPath first, LabelledPath last){
-			segs.add(new PathPair(first, last));
-		}
-		
-		public void addLabel(Predicate label){
-			labels.add(new LabelSequence(label));
-		}
-		
-		public void addLabel(LabelSequence first, LabelSequence last){
-			labels.add(new LabelSequence(first, last));
-		}
-		
-		public boolean isLoop(){
-			return pair.isLoop();
-		}
-		
-		@Override
-		public String toString(){
-			StringBuilder builder = new StringBuilder();
-			builder.append("LabelledPath[id=");
-			builder.append(segId);
-			builder.append(",path=");
-			builder.append(pair);
-			builder.append(",labels={");
-			for(LabelSequence seq : labels){
-				builder.append(seq.toString());
-				builder.append(",");
-			}
-			builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
-			for(PathPair seq : segs){
-				builder.append(seq.first.segId);
-				builder.append(seq.second.segId);
-				builder.append(",");
-			}
-			builder.delete(builder.length() - 1, builder.length());
-			builder.append("}]");
-			builder.append("}]");
-			return builder.toString();
-		}
-		
-		@Override
-		public int hashCode(){
-			return segId;
+			int cmp = Integer.compare(first.getSegmentId(), o.first.getSegmentId());
+			return cmp == 0 ? Integer.compare(second.getSegmentId(), o.second.getSegmentId()) : cmp;
 		}
 	}
 	
 	private static final record BlockPair(Block first, Block second){
 		
 		private BlockPair(PathPair pair){
-			this(pair.first.block, pair.second.block);
+			this(pair.first.getBlock(), pair.second.getBlock());
 		}
 	}
 	
