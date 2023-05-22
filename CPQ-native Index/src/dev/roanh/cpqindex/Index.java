@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -221,13 +220,9 @@ public class Index{
 			
 			out[labStart - 1].append("-----");
 			for(int i = 0; i < block.labels.size(); i++){
-				int w = 0;
-				for(Predicate p : block.labels.get(i).getLabels()){
-					String str = p.getAlias();
-					out[labStart + i].append(p.getAlias());
-					w += str.length();
-				}
-				blockWidth = Math.max(blockWidth, w);
+				String str = block.labels.get(i).getLabels().toString();
+				out[labStart + i].append(str);
+				blockWidth = Math.max(blockWidth, str.length());
 			}
 			
 			out[coreStart - 1].append("-----");
@@ -714,9 +709,7 @@ public class Index{
 			builder.append(paths);
 			builder.append(",labels={");
 			for(LabelSequence seq : labels){
-				for(Predicate p : seq.getLabels()){
-					builder.append(p.getAlias());
-				}
+				builder.append(seq.toString());
 				builder.append(",");
 			}
 			builder.delete(builder.length() - 1, builder.length());
@@ -874,9 +867,7 @@ public class Index{
 			builder.append(pair);
 			builder.append(",labels={");
 			for(LabelSequence seq : labels){
-				for(Predicate p : seq.getLabels()){
-					builder.append(p.getAlias());
-				}
+				builder.append(seq.toString());
 				builder.append(",");
 			}
 			builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
@@ -894,82 +885,6 @@ public class Index{
 		@Override
 		public int hashCode(){
 			return segId;
-		}
-	}
-	
-	/**
-	 * Class representing a sequence of edge labels.
-	 * @author Roan
-	 */
-	public static final class LabelSequence implements Comparable<LabelSequence>{
-		/**
-		 * An ordered array of the labels that make up the label sequence.
-		 */
-		private Predicate[] data;
-		
-		/**
-		 * Constructs a new label sequence by joining the given sequences.
-		 * @param first The start of the new label sequence.
-		 * @param last The end of the new label sequence.
-		 */
-		public LabelSequence(LabelSequence first, LabelSequence last){
-			data = new Predicate[first.data.length + last.data.length];
-			System.arraycopy(first.data, 0, data, 0, first.data.length);
-			System.arraycopy(last.data, 0, data, first.data.length, last.data.length);
-		}
-		
-		public LabelSequence(DataInputStream in, RangeList<Predicate> labels) throws IOException{
-			data = new Predicate[in.readInt()];
-			for(int i = 0; i < data.length; i++){
-				int id = in.readInt();
-				if(id < 0){
-					data[i] = labels.get(-id - 1).getInverse();
-				}else{
-					data[i] = labels.get(id);
-				}
-			}
-		}
-
-		public void write(DataOutputStream out) throws IOException{
-			out.writeInt(data.length);
-			for(Predicate p : data){
-				out.writeInt(p.isInverse() ? (-p.getID() - 1) : p.getID());
-			}
-		}
-
-		public LabelSequence(Predicate label){
-			data = new Predicate[]{label};
-		}
-		
-		public Predicate[] getLabels(){
-			return data;
-		}
-
-		@Override
-		public int compareTo(LabelSequence o){
-			int cmp = Integer.compare(data.length, o.data.length);
-			if(cmp == 0){
-				for(int i = 0; i < data.length; i++){
-					cmp = data[i].compareTo(o.data[i]);
-					if(cmp != 0){
-						return cmp;
-					}
-				}
-				
-				return 0;
-			}else{
-				return cmp;
-			}
-		}
-		
-		@Override
-		public int hashCode(){
-			return Arrays.hashCode(data);
-		}
-		
-		@Override
-		public boolean equals(Object obj){
-			return Arrays.equals(data, ((Index.LabelSequence)obj).data);
 		}
 	}
 	
