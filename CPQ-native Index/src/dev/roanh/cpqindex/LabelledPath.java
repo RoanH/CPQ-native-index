@@ -6,7 +6,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import dev.roanh.cpqindex.Index.Block;
-import dev.roanh.cpqindex.Index.PathPair;
 import dev.roanh.gmark.core.graph.Predicate;
 
 /**
@@ -307,8 +306,8 @@ public final class LabelledPath{
 		}
 		builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
 		for(PathPair seq : segs){
-			builder.append(seq.first.segId);
-			builder.append(seq.second.segId);
+			builder.append(seq.getFirst().segId);
+			builder.append(seq.getSecond().segId);
 			builder.append(",");
 		}
 		builder.delete(builder.length() - 1, builder.length());

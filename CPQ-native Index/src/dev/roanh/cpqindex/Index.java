@@ -723,53 +723,10 @@ public class Index{
 		}
 	}
 	
-	/**
-	 * Represents a pair of two labelled paths
-	 * that were joined to form a new path.
-	 * @author Roan
-	 */
-	static final class PathPair implements Comparable<PathPair>{
-		/**
-		 * The first path of this pair, also the start of the joined path.
-		 */
-		final LabelledPath first;
-		/**
-		 * The second path of this pair, also the end of the joined path.
-		 */
-		final LabelledPath second;
-		
-		/**
-		 * Constructs a new path pair with the given paths.
-		 * @param first The first and start path.
-		 * @param second The second and end path.
-		 */
-		PathPair(LabelledPath first, LabelledPath second){
-			this.first = first;
-			this.second = second;
-		}
-		
-		@Override
-		public boolean equals(Object obj){
-			Index.PathPair other = (Index.PathPair)obj;
-			return first.equals(other.first) && second.equals(other.second);
-		}
-		
-		@Override
-		public int hashCode(){
-			return 31 * first.hashCode() + second.hashCode();
-		}
-
-		@Override
-		public int compareTo(PathPair o){
-			int cmp = Integer.compare(first.getSegmentId(), o.first.getSegmentId());
-			return cmp == 0 ? Integer.compare(second.getSegmentId(), o.second.getSegmentId()) : cmp;
-		}
-	}
-	
 	private static final record BlockPair(Block first, Block second){
 		
 		private BlockPair(PathPair pair){
-			this(pair.first.getBlock(), pair.second.getBlock());
+			this(pair.getFirst().getBlock(), pair.getSecond().getBlock());
 		}
 	}
 	
