@@ -86,87 +86,6 @@ public class Index{
 		eq.sort();
 		eq.print();
 		
-		//OK
-//		Predicate l0 = new Predicate(0, "0");
-//		Predicate l1 = new Predicate(1, "1");
-//		
-//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-//		g.addUniqueNode(0);
-//		g.addUniqueNode(1);
-//		g.addUniqueNode(2);
-//		g.addUniqueNode(3);
-//
-//		g.addUniqueEdge(0, 1, l0);
-//		g.addUniqueEdge(0, 2, l0);
-//		g.addUniqueEdge(1, 3, l1);
-//		g.addUniqueEdge(2, 3, l1);
-//		g.addUniqueEdge(1, 2, l1);
-////		g.addUniqueEdge(2, 1, l1);
-		
-//		Index eq = new Index(g, 2, true, true, 1);
-		
-//		Predicate l0 = new Predicate(0, "0");
-//		Predicate l1 = new Predicate(1, "1");
-//		Predicate l2 = new Predicate(2, "2");
-//		Predicate l3 = new Predicate(3, "3");
-//		
-//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-//		g.addUniqueNode(0);
-//		g.addUniqueNode(1);
-//		g.addUniqueNode(2);
-//		g.addUniqueNode(3);
-//		g.addUniqueNode(4);
-//		g.addUniqueNode(5);
-//		g.addUniqueNode(6);
-//
-//		g.addUniqueEdge(0, 1, l0);
-//		g.addUniqueEdge(0, 2, l1);
-//		g.addUniqueEdge(1, 3, l0);
-//		g.addUniqueEdge(2, 3, l1);
-//		g.addUniqueEdge(3, 4, l2);
-//		g.addUniqueEdge(3, 5, l3);
-//		g.addUniqueEdge(4, 6, l2);
-//		g.addUniqueEdge(5, 6, l3);
-//		
-//		Index eq = new Index(g, 2, true, true, 1);
-		
-//		Predicate a = new Predicate(0, "0");
-//		Predicate b = new Predicate(1, "1");
-//		Predicate c = new Predicate(2, "2");
-//		
-//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-//		g.addUniqueNode(0);
-//		g.addUniqueNode(1);
-//		g.addUniqueNode(2);
-//		g.addUniqueNode(3);
-//		g.addUniqueNode(4);
-//
-//		g.addUniqueEdge(0, 1, c);
-//		g.addUniqueEdge(1, 2, b);
-//		g.addUniqueEdge(1, 3, a);
-//		g.addUniqueEdge(2, 4, b);
-//		g.addUniqueEdge(3, 4, a);
-//		
-//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2);
-		
-//		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-//		g.addUniqueNode(0);
-//		g.addUniqueNode(1);
-//
-//		g.addUniqueEdge(0, 1, a);
-//		g.addUniqueEdge(1, 1, b);
-//		
-//		EquivalenceClass<Integer> eq = new EquivalenceClass<Integer>(2);
-		
-//		System.out.println("Final blocks for CPQ" + eq.k + " | " + eq.blocks.size());
-//		eq.sort();
-//		eq.blocks.forEach(System.out::println);
-//		
-//		eq.print();
-		
-//		CPQ q = CPQ.labels(l3, l3.getInverse());
-//		System.out.println("run: " + q);
-//		System.out.println(eq.query(q));
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
@@ -477,11 +396,11 @@ public class Index{
 				
 				for(LabelledPath seg : segments.get(k1)){
 					for(LabelledPath end : segments.get(k2)){
-						if(seg.pair.trg != end.pair.src){
+						if(seg.pair.getTarget() != end.pair.getSource()){
 							continue;
 						}
 						
-						Pair key = new Pair(seg.pair.src, end.pair.trg);
+						Pair key = new Pair(seg.pair.getSource(), end.pair.getTarget());
 						LabelledPath path = pathMap.computeIfAbsent(key, p->{
 							LabelledPath newPath = new LabelledPath(p, history.get(p));
 							history.put(p, newPath);
@@ -1061,90 +980,10 @@ public class Index{
 		}
 	}
 	
-	/**
-	 * Represents a pair of two vertices, also referred to as a
-	 * path or an st-pair.
-	 * @author Roan
-	 */
-	public static final class Pair implements Comparable<Pair>{
-		/**
-		 * The source vertex.
-		 */
-		private final int src;
-		/**
-		 * The target vertex.
-		 */
-		private final int trg;
+	public static abstract interface ProgressListener{
 		
-		/**
-		 * Constructs a new pair with the given source and target vertex.
-		 * @param src The source vertex.
-		 * @param trg The target vertex.
-		 */
-		private Pair(int src, int trg){
-			this.src = src;
-			this.trg = trg;
-		}
+		public abstract void partitionStart(int k);
 		
-		private Pair(DataInputStream in) throws IOException{
-			src = in.readInt();
-			trg = in.readInt();
-		}
-		
-		private void write(DataOutputStream out) throws IOException{
-			out.writeInt(src);
-			out.writeInt(trg);
-		}
-
-		/**
-		 * Get the source vertex of this pair.
-		 * @return The source vertex of this pair.
-		 */
-		public int getSource(){
-			return src;
-		}
-		
-		/**
-		 * Gets the target vertex of this pair.
-		 * @return The target vertex of thsi pair.
-		 */
-		public int getTarget(){
-			return trg;
-		}
-		
-		/**
-		 * Checks if this pair represents a loop, that is,
-		 * if the source and target vertex are equivalent.
-		 * @return True if this pair represents a loop.
-		 */
-		public boolean isLoop(){
-			return src == trg;
-		}
-		
-		@Override
-		public boolean equals(Object obj){
-			Index.Pair other = (Index.Pair)obj;
-			return src == other.src && trg == other.trg;
-		}
-
-		@Override
-		public int hashCode(){
-			return 31 * src + trg;
-		}
-		
-		@Override
-		public String toString(){
-			return "(" + src + "," + trg + ")";
-		}
-
-		@Override
-		public int compareTo(Pair o){
-			int cmp = Integer.compare(src, o.src);
-			return cmp == 0 ? Integer.compare(trg, o.trg) : cmp;
-		}
-	}
-	
-	public static interface ProgressListener{
-		
+		public abstract void partitioningDone(int k);
 	}
 }
