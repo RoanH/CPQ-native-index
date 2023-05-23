@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -326,20 +325,20 @@ public class Index{
 
 		//process cores layer by layer
 		for(int i = 0; i < k; i++){
-			List<Callable<Void>> tasks = layers.get(i).stream().<Callable<Void>>map(b->{
-				return ()->{
-					b.computeCores();
-					return null;
-				};
-			}).toList();
+			progress.coresStart(i + 1);
 			
-			for(Future<Void> future : executor.invokeAll(tasks)){
+			int done = 0;
+			List<Future<?>> tasks = layers.get(i).stream().<Future<?>>map(b->executor.submit(b::computeCores)).toList();
+			for(Future<?> future : tasks){
 				future.get();
+				progress.coresBlocksDone(++done, tasks.size());
 			}
+			
+			progress.coresEnd(i + 1);
 		}
 		
+		executor.shutdown();
 		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.cores.size()).sum());
-		
 	}
 	
 	//partition according to k-path-bisimulation
@@ -487,8 +486,8 @@ public class Index{
 		private final int id;
 		private final int k;
 		private List<Pair> paths;
-		private List<LabelSequence> labels = new ArrayList<LabelSequence>();//TODO technically no need to store this for a core based index, probably turn it off for real use -- except dia 1
-		private List<CPQ> cores = new ArrayList<CPQ>();//TODO technically not needed for the top level -- not restored after write read
+		private List<LabelSequence> labels = new ArrayList<LabelSequence>();
+		private List<CPQ> cores = new ArrayList<CPQ>();//TODO not restored after write read
 		private Set<CoreHash> canonCores = new HashSet<CoreHash>();
 		
 		/**
@@ -586,13 +585,18 @@ public class Index{
 			}
 		}
 		
-		private void addCores(List<CanonFuture> candidates) throws InterruptedException, ExecutionException{
-			for(CanonFuture future : candidates){
-				addCore(future.get());
+		private void addCores(List<CanonFuture> candidates){
+			try{
+				for(CanonFuture future : candidates){
+					addCore(future.get());
+				}
+			}catch(InterruptedException | ExecutionException e){
+				//we do not ever interrupt nauty
+				throw new RuntimeException(e);
 			}
 		}
 		
-		private void computeCores() throws InterruptedException, ExecutionException{
+		private void computeCores(){
 			//inherited from previous layer blocks
 			if(ancestor != null){//only need to go back one level since the previous level already collected the level before that
 				//these are by definition of a different diameter
@@ -744,6 +748,18 @@ public class Index{
 			@Override
 			public void computeBlocksEnd(int k){
 			}
+
+			@Override
+			public void coresBlocksDone(int done, int total){
+			}
+
+			@Override
+			public void coresStart(int k){
+			}
+
+			@Override
+			public void coresEnd(int k){
+			}
 		};
 		
 		public static final ProgressListener LOG = new ProgressListener(){
@@ -777,6 +793,21 @@ public class Index{
 			public void computeBlocksEnd(int k){
 				System.out.println(System.currentTimeMillis() + " Block end k=" + k);
 			}
+
+			@Override
+			public void coresStart(int k){
+				System.out.println(System.currentTimeMillis() + " Cores start k=" + k);
+			}
+			
+			@Override
+			public void coresBlocksDone(int done, int total){
+				System.out.println(System.currentTimeMillis() + " Blocks " + done + "/" + total);
+			}
+
+			@Override
+			public void coresEnd(int k){
+				System.out.println(System.currentTimeMillis() + " Cores end k=" + k);
+			}
 		};
 
 		public abstract void partitionStart(int k);
@@ -790,5 +821,11 @@ public class Index{
 		public abstract void computeBlocksStart(int k);
 		
 		public abstract void computeBlocksEnd(int k);
+		
+		public abstract void coresStart(int k);
+		
+		public abstract void coresBlocksDone(int done, int total);
+
+		public abstract void coresEnd(int k);
 	}
 }

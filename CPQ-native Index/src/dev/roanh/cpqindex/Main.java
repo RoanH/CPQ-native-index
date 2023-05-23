@@ -30,7 +30,7 @@ public class Main{
 		//TODO
 		
 		try{
-			Thread.sleep(10000);
+//			Thread.sleep(10000);
 			System.out.println("START");
 			Instant start = Instant.now();//advogato, robots
 			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true, false, 7, Integer.MAX_VALUE, ProgressListener.LOG);//cores, labels
