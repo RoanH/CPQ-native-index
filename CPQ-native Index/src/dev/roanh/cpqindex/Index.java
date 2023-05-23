@@ -53,8 +53,6 @@ public class Index{
 	private List<Block> blocks;
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
 	private RangeList<Predicate> predicates;
-	@Deprecated
-	private UniqueGraph<Integer, Predicate> graph;
 	
 	//TODO double check private/public of everything
 	
@@ -108,7 +106,6 @@ public class Index{
 		this.verbose = verbose;
 		layers = new RangeList<List<Block>>(k, ArrayList::new);
 		blocks = layers.get(k - 1);
-		graph = g;
 		
 		computeBlocks(partition(g));
 		if(computeCores){
@@ -494,11 +491,12 @@ public class Index{
 			paths = slice.stream().map(LabelledPath::getPair).collect(Collectors.toList());
 			slice.forEach(s->s.setBlock(this));
 			
-			if(computeLabels || k == 1){
+			if(computeLabels || k == 1 || verbose){
 				//we need labels to compute cores for k = 1
 				labels.addAll(range.getLabels());
 			}
 			
+			//we inherit all labels from the previous layer block the paths in this block are a subset of
 			if(range.hasAncestor()){
 				ancestor = range.getAncestor().getBlock();
 				if(computeLabels){
@@ -567,49 +565,31 @@ public class Index{
 			return paths.get(0).isLoop();
 		}
 		
-		private int reject;//TODO remove?
 		private void addCore(CanonForm canon){
-			if(canonCores.add(canon.toHashCanon())){
-				cores.add(canon.getCPQ());//TODO don't store this on the last layer?
-			}else{
-				reject++;
-				rejected.add(canon.getCPQ());
-			}
-		}
-		private List<CPQ> rejected = new ArrayList<CPQ>();
-		
-		private void addCores(List<CanonFuture> candidates){
-			try{
-				for(CanonFuture future : candidates){
-					addCore(future.get());
-				}
-			}catch(InterruptedException | ExecutionException e){
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			if(canonCores.add(canon.toHashCanon()) && (k != Index.this.k || verbose)){//no need to store coes on the last layer
+				cores.add(canon.getCPQ());
 			}
 		}
 		
-		private void computeCores(){
+		private void addCores(List<CanonFuture> candidates) throws InterruptedException, ExecutionException{
+			for(CanonFuture future : candidates){
+				addCore(future.get());
+			}
+		}
+		
+		private void computeCores() throws InterruptedException, ExecutionException{
 			//inherited from previous layer blocks
 			if(ancestor != null){//only need to go back one level since the previous level already collected the level before that
-				
-				
 				//these are by definition of a different diameter
-				//if(computeCores){//TODO probably want to differentiate between prepping and computing maybe?
-					
-					canonCores.addAll(ancestor.canonCores);
-					if(verbose || k != Index.this.k){
-						//we do not need to store core structure for the last layer
-						cores.addAll(ancestor.cores);
-					}
-				//}
+				canonCores.addAll(ancestor.canonCores);
+				if(verbose || k != Index.this.k){
+					//we do not need to store core structure for the last layer
+					cores.addAll(ancestor.cores);
+				}
 			}
 			
-			
-//			if(computeCores){
-//			}
-				
-			final int skip = cores.size();//TODO skip is inherited range
+			//all cores so far are inherited fully processed cores from the ancestor, we skip these for intersections
+			final int skip = cores.size();
 			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
 			
 			if(combinations.isEmpty()){
@@ -629,7 +609,7 @@ public class Index{
 			addCores(candidates);
 			candidates.clear();
 			
-			//all intersections of cores (exactly, these are all cores)
+			//all intersections of cores (exactly, these are all distinct cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
 			for(int i = 0; i < graphs.length; i++){
 				graphs[i] = cores.get(i).toQueryGraph();
@@ -729,6 +709,10 @@ public class Index{
 	public static abstract interface ProgressListener{
 		
 		public abstract void partitionStart(int k);
+		
+		public abstract void partitionCombinationStart(int k1, int k2);
+		
+		public abstract void partitionCombinationEnd(int k1, int k2);
 		
 		public abstract void partitioningDone(int k);
 	}
