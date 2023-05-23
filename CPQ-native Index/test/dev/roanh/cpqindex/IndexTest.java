@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.cpqindex.Index.Block;
-import dev.roanh.cpqindex.Index.ProgressListener;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.GeneratorCPQ;
 import dev.roanh.gmark.core.graph.Predicate;

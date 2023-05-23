@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 
-import dev.roanh.cpqindex.Index.ProgressListener;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
