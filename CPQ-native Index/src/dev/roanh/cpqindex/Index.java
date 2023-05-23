@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -53,49 +51,7 @@ public class Index{
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
 	
 	private ProgressListener progress;
-	
-	//TODO double check private/public of everything
-	
-	public static void main(String[] args) throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
-		try{
-			Main.loadNatives();
-		}catch(UnsatisfiedLinkError | IOException e){
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 		
-		Predicate l0 = new Predicate(0, "0");
-		Predicate l1 = new Predicate(1, "1");
-		
-		UniqueGraph<Integer, Predicate> g = new UniqueGraph<Integer, Predicate>();
-		g.addUniqueNode(0);
-		g.addUniqueNode(1);
-		g.addUniqueNode(2);
-
-		g.addUniqueEdge(0, 1, l0);
-		g.addUniqueEdge(0, 2, l0);
-		g.addUniqueEdge(1, 2, l1);
-//		g.addUniqueEdge(2, 1, l1);
-		Index eq = new Index(g, 1, true, true, 1, 2, ProgressListener.NONE);
-		eq.sort();
-		eq.print();
-		
-		eq = new Index(g, 3, true, true, 1, 2, ProgressListener.NONE);
-		eq.sort();
-		eq.print();
-		
-		eq.write(Files.newOutputStream(Paths.get("full.bin")), true);
-		eq.write(Files.newOutputStream(Paths.get("partial.bin")), false);
-
-		Index full = new Index(Files.newInputStream(Paths.get("full.bin")));
-		System.out.println("full idx");
-		full.print();
-		
-		Index partial = new Index(Files.newInputStream(Paths.get("partial.bin")));
-		System.out.println("partial idx");
-		partial.print();
-	}
-	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		this(g, k, threads, Integer.MAX_VALUE);
 	}
