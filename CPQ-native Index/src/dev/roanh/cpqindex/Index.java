@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -53,7 +55,7 @@ public class Index{
 	
 	//TODO double check private/public of everything
 	
-	public static void main(String[] args) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public static void main(String[] args) throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
 		try{
 			Main.loadNatives();
 		}catch(UnsatisfiedLinkError | IOException e){
@@ -81,7 +83,16 @@ public class Index{
 		eq.sort();
 		eq.print();
 		
+		eq.write(Files.newOutputStream(Paths.get("full.bin")), true);
+		eq.write(Files.newOutputStream(Paths.get("partial.bin")), false);
 
+		Index full = new Index(Files.newInputStream(Paths.get("full.bin")));
+		System.out.println("full idx");
+		full.print();
+		
+		Index partial = new Index(Files.newInputStream(Paths.get("partial.bin")));
+		System.out.println("partial idx");
+		partial.print();
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
@@ -152,7 +163,6 @@ public class Index{
 		if(full){
 			out.writeInt(predicates.size());
 			for(Predicate p : predicates){
-				out.writeInt(p.getID());
 				byte[] str = p.getAlias().getBytes(StandardCharsets.UTF_8);
 				out.writeInt(str.length);
 				out.write(str);
