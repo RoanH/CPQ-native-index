@@ -46,7 +46,11 @@ public class Index{
 	private final int k;
 	private final boolean verbose;//storage of labels & cpqs
 	
-	private List<Block> blocks = new ArrayList<Block>();
+	
+	
+	
+	private RangeList<List<Block>> layers;
+	private List<Block> blocks;
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
 	private RangeList<Predicate> predicates;
 	@Deprecated
@@ -102,9 +106,15 @@ public class Index{
 		this.maxIntersections = maxIntersections;
 		this.k = k;
 		this.verbose = verbose;
+		layers = new RangeList<List<Block>>(k, ArrayList::new);
+		blocks = layers.get(k - 1);
 		graph = g;
-		computeBlocks(partition(g), threads);
-		mapCoresToBlocks();
+		
+		computeBlocks(partition(g));
+		if(computeCores){
+			computeCores(threads);
+			mapCoresToBlocks();
+		}
 	}
 	
 	public Index(InputStream source) throws IOException{
@@ -114,6 +124,7 @@ public class Index{
 		maxIntersections = in.readInt();
 		k = in.readInt();
 		verbose = in.readBoolean();
+		//TODO layers/blocks?
 		
 		predicates = new RangeList<Predicate>(in.readInt());
 		for(int i = 0; i < predicates.size(); i++){
@@ -217,7 +228,7 @@ public class Index{
 			
 			out[labStart - 1].append("-----");
 			for(int i = 0; i < block.labels.size(); i++){
-				String str = block.labels.get(i).getLabels().toString();
+				String str = block.labels.get(i).toString();
 				out[labStart + i].append(str);
 				blockWidth = Math.max(blockWidth, str.length());
 			}
@@ -250,12 +261,11 @@ public class Index{
 		}
 	}
 	
-	private void computeBlocks(RangeList<List<LabelledPath>> segments, int threads) throws InterruptedException, ExecutionException{
+	private void computeBlocks(RangeList<List<LabelledPath>> segments){
 		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
-		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		
 		for(int j = 0; j < k; j++){
-			List<Callable<Block>> tasks = new ArrayList<Callable<Block>>();
+			List<Block> layerBlocks = layers.get(j);
 			final int lk = j + 1;
 			
 			List<LabelledPath> segs = segments.get(j);
@@ -264,12 +274,7 @@ public class Index{
 			for(int i = 0; i <= segs.size(); i++){
 				if(i == segs.size() || segs.get(i).getSegmentId() != lastId){
 					List<LabelledPath> slice = segs.subList(start, i);
-					
-					tasks.add(()->{
-						Block block = new Block(lk, slice);
-						System.out.println("id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
-						return block;
-					});
+					layerBlocks.add(new Block(lk, slice));
 					
 					if(lk != k){
 						for(LabelledPath path : slice){
@@ -287,35 +292,17 @@ public class Index{
 					}
 				}
 			}
-			
-			if(lk != k){
-				for(Future<Block> future : executor.invokeAll(tasks)){
-					//only CPQk blocks get added directly
-					future.get();
-				}
-			}else{
-				for(Future<Block> future : executor.invokeAll(tasks)){
-					blocks.add(future.get());
-				}
-			}
 		}
 		
 		//any remaining pairs denote blocks from previous layers
 		List<LabelledPath> remaining = unused.values().stream().sorted(Comparator.comparing(LabelledPath::getSegmentId)).collect(Collectors.toList());
 		if(!remaining.isEmpty()){
-			List<Callable<Block>> tasks = new ArrayList<Callable<Block>>();
-			
 			int start = 0;
 			int lastId = remaining.get(0).getSegmentId();
 			for(int i = 0; i <= remaining.size(); i++){
 				if(i == remaining.size() || remaining.get(i).getSegmentId() != lastId){
 					List<LabelledPath> slice = remaining.subList(start, i);
-					
-					tasks.add(()->{
-						Block block = new Block(k, slice);
-						System.out.println("id=" + block.id + " s=" + slice.size() + " c=" + block.cores.size() + " r=" + block.reject + String.format(" (%1$.3f)", block.cores.size() / (double)(block.cores.size() + block.reject)));
-						return block;
-					});
+					blocks.add(new Block(k, slice));
 					
 					if(i != remaining.size()){
 						lastId = remaining.get(i).getSegmentId();
@@ -323,15 +310,28 @@ public class Index{
 					}
 				}
 			}
+		}
+	}
+	
+	private void computeCores(int threads) throws InterruptedException, ExecutionException{
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
+
+		//process cores layer by layer
+		for(int i = 0; i < k; i++){
+			List<Callable<Void>> tasks = layers.get(i).stream().<Callable<Void>>map(b->{
+				return ()->{
+					b.computeCores();
+					return null;
+				};
+			}).toList();
 			
-			for(Future<Block> future : executor.invokeAll(tasks)){
-				blocks.add(future.get());
+			for(Future<Void> future : executor.invokeAll(tasks)){
+				future.get();
 			}
 		}
 		
-		executor.shutdown();
+		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.cores.size()).sum());
 		
-		System.out.println("Total cores: " + blocks.parallelStream().mapToLong(b->b.cores.size()).sum());
 	}
 	
 	//partition according to k-path-bisimulation
@@ -507,10 +507,6 @@ public class Index{
 			}
 			
 			combinations = range.getSegments().stream().map(BlockPair::new).toList();
-			
-			if(computeCores){
-				computeCores();//TODO remove
-			}
 		}
 		
 		private Block(DataInputStream in) throws IOException{
