@@ -41,19 +41,15 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 public class Index{
 	private final int maxIntersections;
 	private final boolean computeLabels;
-	private final boolean computeCores;
 	private final int k;
-	
-	
-	
-	
+	private boolean computeCores;
+	private RangeList<Predicate> predicates;
+
 	private RangeList<List<Block>> layers;
 	private List<Block> blocks;
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
-	private RangeList<Predicate> predicates;
 	
-	
-	private ProgressListener progress = null;
+	private ProgressListener progress;
 	
 	//TODO double check private/public of everything
 	
@@ -117,43 +113,56 @@ public class Index{
 	
 	public Index(InputStream source) throws IOException{
 		DataInputStream in = new DataInputStream(source);
+		boolean full = in.readBoolean();
 		computeCores = in.readBoolean();
 		computeLabels = in.readBoolean();
 		maxIntersections = in.readInt();
 		k = in.readInt();
-		//TODO layers/blocks?
 		
-		predicates = new RangeList<Predicate>(in.readInt());
-		for(int i = 0; i < predicates.size(); i++){
-			byte[] data = new byte[in.readInt()];
-			in.readFully(data);
-			predicates.set(i, new Predicate(i, new String(data, StandardCharsets.UTF_8)));
+		if(full){
+			predicates = new RangeList<Predicate>(in.readInt());
+			for(int i = 0; i < predicates.size(); i++){
+				byte[] data = new byte[in.readInt()];
+				in.readFully(data);
+				predicates.set(i, new Predicate(i, new String(data, StandardCharsets.UTF_8)));
+			}
 		}
 		
-		int len = in.readInt();
-		for(int i = 0; i < len; i++){
-			blocks.add(new Block(in));
+		layers = new RangeList<List<Block>>(k, ArrayList::new);
+		blocks = layers.get(k - 1);
+		for(int i = full ? 0 : (k - 1); i < k; i++){
+			List<Block> layer = layers.get(i);
+			int len = in.readInt();
+			for(int j = 0; j < len; j++){
+				layer.add(new Block(in, full));
+			}			
 		}
 	}
 	
-	public void write(OutputStream target) throws IOException{
+	public void write(OutputStream target, boolean full) throws IOException{
 		DataOutputStream out = new DataOutputStream(target);
+		out.writeBoolean(full);
 		out.writeBoolean(computeCores);
 		out.writeBoolean(computeLabels);
 		out.writeInt(maxIntersections);
 		out.writeInt(k);
 		
-		out.writeInt(predicates.size());
-		for(Predicate p : predicates){
-			out.writeInt(p.getID());
-			byte[] str = p.getAlias().getBytes(StandardCharsets.UTF_8);
-			out.writeInt(str.length);
-			out.write(str);
+		if(full){
+			out.writeInt(predicates.size());
+			for(Predicate p : predicates){
+				out.writeInt(p.getID());
+				byte[] str = p.getAlias().getBytes(StandardCharsets.UTF_8);
+				out.writeInt(str.length);
+				out.write(str);
+			}
 		}
 		
-		out.writeInt(blocks.size());
-		for(Block block : blocks){
-			block.write(out);
+		for(int i = full ? 0 : (k - 1); i < k; i++){
+			List<Block> layer = layers.get(i);
+			out.writeInt(layer.size());
+			for(Block block : layer){
+				block.write(out, full);
+			}
 		}
 	}
 	
@@ -320,7 +329,13 @@ public class Index{
 		progress.computeBlocksEnd(k);
 	}
 	
-	private void computeCores(int threads) throws InterruptedException, ExecutionException{
+	public void computeCores(int threads) throws InterruptedException, ExecutionException{
+		if(computeCores){
+			throw new IllegalStateException("Cores have already been computed.");
+		}else if(predicates == null){
+			throw new IllegalStateException("Cannot compute cores on an index that wasn't fully saved.");
+		}
+		
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
 
 		//process cores layer by layer
@@ -338,6 +353,7 @@ public class Index{
 		}
 		
 		executor.shutdown();
+		computeCores = true;
 		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.cores.size()).sum());
 	}
 	
@@ -487,7 +503,7 @@ public class Index{
 		private final int k;
 		private List<Pair> paths;
 		private List<LabelSequence> labels = new ArrayList<LabelSequence>();
-		private List<CPQ> cores = new ArrayList<CPQ>();//TODO not restored after write read
+		private List<CPQ> cores = new ArrayList<CPQ>();//TODO never restored after write read
 		private Set<CoreHash> canonCores = new HashSet<CoreHash>();
 		
 		/**
@@ -521,7 +537,7 @@ public class Index{
 			combinations = range.getSegments().stream().map(BlockPair::new).toList();
 		}
 		
-		private Block(DataInputStream in) throws IOException{
+		private Block(DataInputStream in, boolean full) throws IOException{
 			id = in.readInt();
 			k = in.readInt();
 			
@@ -531,10 +547,12 @@ public class Index{
 				paths.add(new Pair(in));
 			}
 			
-			len = in.readInt();
-			labels = new ArrayList<LabelSequence>(len);
-			for(int i = 0; i < len; i++){
-				labels.add(new LabelSequence(in, predicates));
+			if(full){
+				len = in.readInt();
+				labels = new ArrayList<LabelSequence>(len);
+				for(int i = 0; i < len; i++){
+					labels.add(new LabelSequence(in, predicates));
+				}
 			}
 			
 			len = in.readInt();
@@ -543,7 +561,7 @@ public class Index{
 			}
 		}
 		
-		private void write(DataOutputStream out) throws IOException{
+		private void write(DataOutputStream out, boolean full) throws IOException{
 			out.writeInt(id);
 			out.writeInt(k);
 			
@@ -552,9 +570,11 @@ public class Index{
 				pair.write(out);
 			}
 			
-			out.writeInt(labels.size());
-			for(LabelSequence seq : labels){
-				seq.write(out);
+			if(full){
+				out.writeInt(labels.size());
+				for(LabelSequence seq : labels){
+					seq.write(out);
+				}
 			}
 			
 			out.writeInt(canonCores.size());
