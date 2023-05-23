@@ -1,8 +1,11 @@
 package dev.roanh.cpqindex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.HashMap;
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.cpqindex.Index.Block;
+import dev.roanh.cpqindex.Index.ProgressListener;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.GeneratorCPQ;
 import dev.roanh.gmark.core.graph.Predicate;
@@ -24,6 +28,7 @@ import dev.roanh.gmark.util.UniqueGraph;
 
 public class IndexTest{
 	private static Map<String, Predicate> symbols = new HashMap<String, Predicate>();
+	private static UniqueGraph<Integer, Predicate> testGraph;
 	
 	static{
 		symbols.put("0", new Predicate(0, "0"));
@@ -31,11 +36,106 @@ public class IndexTest{
 		symbols.put("2", new Predicate(2, "2"));
 		symbols.put("3", new Predicate(3, "3"));
 		
+		testGraph = new UniqueGraph<Integer, Predicate>();
+		testGraph.addUniqueNode(0);
+		testGraph.addUniqueNode(1);
+		testGraph.addUniqueNode(2);
+
+		testGraph.addUniqueEdge(0, 1, symbols.get("0"));
+		testGraph.addUniqueEdge(0, 2, symbols.get("0"));
+		testGraph.addUniqueEdge(1, 2, symbols.get("1"));
+		
 		try{
 			Main.loadNatives();
 		}catch(UnsatisfiedLinkError | IOException e){
 			e.printStackTrace();
 		}
+	}
+	
+	@Test
+	public void resumeTest() throws InterruptedException, ExecutionException, IOException{
+		Index index = new Index(testGraph, 3, false, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		index.write(out, true);
+		
+		Index read = new Index(new ByteArrayInputStream(out.toByteArray()));
+		read.computeCores(1);
+		
+		Index other = new Index(testGraph, 3, true, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		
+		List<Block> a = read.getBlocks();
+		List<Block> b = other.getBlocks();
+		assertEquals(a.size(), b.size());
+		for(int i = 0; i < a.size(); i++){
+			assertIterableEquals(a.get(i).getPaths(), b.get(i).getPaths());
+			assertIterableEquals(a.get(i).getCanonCores(), b.get(i).getCanonCores());
+		}
+		
+		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		assertIterableEquals(read.query(q), other.query(q));
+	}
+	
+	@Test
+	public void writeReadTestFullResumeCores() throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
+		Index index = new Index(testGraph, 3, false, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		index.write(out, true);
+		index.computeCores(1);
+		
+		Index read = new Index(new ByteArrayInputStream(out.toByteArray()));
+		read.computeCores(1);
+		
+		List<Block> a = index.getBlocks();
+		List<Block> b = read.getBlocks();
+		assertEquals(a.size(), b.size());
+		for(int i = 0; i < a.size(); i++){
+			assertIterableEquals(a.get(i).getPaths(), b.get(i).getPaths());
+			assertIterableEquals(a.get(i).getCanonCores(), b.get(i).getCanonCores());
+			assertIterableEquals(a.get(i).getLabels(), b.get(i).getLabels());
+		}
+		
+		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		assertIterableEquals(index.query(q), read.query(q));
+	}
+	
+	@Test
+	public void writeReadTestFull() throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
+		Index index = new Index(testGraph, 3, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		index.write(out, true);
+		
+		Index read = new Index(new ByteArrayInputStream(out.toByteArray()));
+		
+		List<Block> a = index.getBlocks();
+		List<Block> b = read.getBlocks();
+		assertEquals(a.size(), b.size());
+		for(int i = 0; i < a.size(); i++){
+			assertIterableEquals(a.get(i).getPaths(), b.get(i).getPaths());
+			assertIterableEquals(a.get(i).getCanonCores(), b.get(i).getCanonCores());
+			assertIterableEquals(a.get(i).getLabels(), b.get(i).getLabels());
+		}
+		
+		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		assertIterableEquals(index.query(q), read.query(q));
+	}
+	
+	@Test
+	public void writeReadTestPartial() throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
+		Index index = new Index(testGraph, 3, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		index.write(out, false);
+		
+		Index read = new Index(new ByteArrayInputStream(out.toByteArray()));
+		
+		List<Block> a = index.getBlocks();
+		List<Block> b = read.getBlocks();
+		assertEquals(a.size(), b.size());
+		for(int i = 0; i < a.size(); i++){
+			assertIterableEquals(a.get(i).getPaths(), b.get(i).getPaths());
+		}
+		
+		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		assertIterableEquals(index.query(q), read.query(q));
 	}
 	
 	@Test
@@ -245,9 +345,11 @@ public class IndexTest{
 			Index.Block block = iter.next();
 			
 			assertEquals(test.getKey().toString(), block.getPaths().toString());
-			block.getLabels().forEach(s->{
-				assertEquals(1, s.getLabels().length);
-			});
+			if(block.getLabels() != null){
+				block.getLabels().forEach(s->{
+					assertEquals(1, s.getLabels().length);
+				});
+			}
 		}
 	}
 	

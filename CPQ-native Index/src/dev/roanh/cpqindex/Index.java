@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -79,7 +80,7 @@ public class Index{
 		eq.sort();
 		eq.print();
 		
-		eq = new Index(g, 2, true, true, 1, 2, ProgressListener.NONE);
+		eq = new Index(g, 3, true, true, 1, 2, ProgressListener.NONE);
 		eq.sort();
 		eq.print();
 		
@@ -131,6 +132,7 @@ public class Index{
 		computeLabels = in.readBoolean();
 		maxIntersections = in.readInt();
 		k = in.readInt();
+		progress = ProgressListener.NONE;
 		
 		if(full){
 			predicates = new RangeList<Predicate>(in.readInt());
@@ -141,14 +143,30 @@ public class Index{
 			}
 		}
 		
+		RangeList<Block> blockMap = new RangeList<Block>(in.readInt());
 		layers = new RangeList<List<Block>>(k, ArrayList::new);
 		blocks = layers.get(k - 1);
 		for(int i = full ? 0 : (k - 1); i < k; i++){
 			List<Block> layer = layers.get(i);
 			int len = in.readInt();
 			for(int j = 0; j < len; j++){
-				layer.add(new Block(in, full));
+				Block block = new Block(in, full, blockMap);
+				layer.add(block);
+				blockMap.set(block.getId(), block);
 			}			
+		}
+
+		int len = in.readInt();
+		for(int i = 0; i < len; i++){
+			CoreHash key = CoreHash.read(in);
+
+			int count = in.readInt();
+			List<Block> blocks = new ArrayList<Block>(count);
+			for(int c = 0; c < count; c++){
+				blocks.add(blockMap.get(in.readInt()));
+			}
+
+			coreToBlock.put(key, blocks);
 		}
 	}
 	
@@ -169,11 +187,22 @@ public class Index{
 			}
 		}
 		
+		out.writeInt(layers.get(k - 1).stream().mapToInt(Block::getId).max().orElse(0) + 1);
 		for(int i = full ? 0 : (k - 1); i < k; i++){
 			List<Block> layer = layers.get(i);
 			out.writeInt(layer.size());
 			for(Block block : layer){
 				block.write(out, full);
+			}
+		}
+		
+		out.writeInt(coreToBlock.size());
+		for(Entry<CoreHash, List<Block>> entry : coreToBlock.entrySet()){
+			entry.getKey().write(out);
+			List<Block> blocks = entry.getValue();
+			out.writeInt(blocks.size());
+			for(Block block : blocks){
+				out.writeInt(block.getId());
 			}
 		}
 	}
@@ -211,7 +240,9 @@ public class Index{
 	public void sort(){
 		for(Block block : blocks){
 			block.paths.sort(null);
-			block.labels.sort(null);
+			if(block.labels != null){
+				block.labels.sort(null);
+			}
 		}
 		
 		blocks.sort(Comparator.comparing(b->b.paths.get(0)));
@@ -517,17 +548,17 @@ public class Index{
 	public final class Block{
 		private final int id;
 		private final int k;
-		private List<Pair> paths;
-		private List<LabelSequence> labels = new ArrayList<LabelSequence>();
-		private List<CPQ> cores = new ArrayList<CPQ>();//TODO never restored after write read
-		private Set<CoreHash> canonCores = new HashSet<CoreHash>();
+		private final List<Pair> paths;
+		private final List<LabelSequence> labels;
+		private final List<CPQ> cores;//TODO never restored after write read
+		private final Set<CoreHash> canonCores;
 		
 		/**
 		 * The block from the previous layer that the paths in this block were stored at.
 		 * @see #paths
 		 */
-		private Block ancestor;
-		private List<BlockPair> combinations;
+		private final Block ancestor;
+		private final List<BlockPair> combinations;
 		
 		private Block(int k, List<LabelledPath> slice){
 			this.k = k;
@@ -539,7 +570,10 @@ public class Index{
 			
 			if(computeLabels || k == 1){
 				//we need labels to compute cores for k = 1
+				labels = new ArrayList<LabelSequence>();
 				labels.addAll(range.getLabels());
+			}else{
+				labels = null;
 			}
 			
 			//we inherit all labels from the previous layer block the paths in this block are a subset of
@@ -548,14 +582,17 @@ public class Index{
 				if(computeLabels){
 					labels.addAll(ancestor.labels);
 				}
+			}else{
+				ancestor = null;
 			}
 			
 			combinations = range.getSegments().stream().map(BlockPair::new).toList();
+			cores = new ArrayList<CPQ>();
+			canonCores = new HashSet<CoreHash>();
 		}
 		
-		private Block(DataInputStream in, boolean full) throws IOException{
+		private Block(DataInputStream in, boolean full, RangeList<Block> blockMap) throws IOException{
 			id = in.readInt();
-			k = in.readInt();
 			
 			int len = in.readInt();
 			paths = new ArrayList<Pair>(len);
@@ -564,22 +601,42 @@ public class Index{
 			}
 			
 			if(full){
+				k = in.readInt();
+				
 				len = in.readInt();
 				labels = new ArrayList<LabelSequence>(len);
 				for(int i = 0; i < len; i++){
 					labels.add(new LabelSequence(in, predicates));
 				}
-			}
-			
-			len = in.readInt();
-			for(int i = 0; i < len; i++){
-				canonCores.add(CoreHash.read(in));
+				
+				int anc = in.readInt();
+				ancestor = anc == -1 ? null : blockMap.get(anc);
+				
+				len = in.readInt();
+				combinations = new ArrayList<BlockPair>(len);
+				for(int i = 0; i < len; i++){
+					combinations.add(new BlockPair(in, blockMap));
+				}
+				
+				len = in.readInt();
+				canonCores = new HashSet<CoreHash>(len);
+				for(int i = 0; i < len; i++){
+					canonCores.add(CoreHash.read(in));
+				}
+				
+				cores = new ArrayList<CPQ>();
+			}else{
+				k = -1;
+				ancestor = null;
+				labels = null;
+				combinations = null;
+				canonCores = null;
+				cores = null;
 			}
 		}
 		
 		private void write(DataOutputStream out, boolean full) throws IOException{
 			out.writeInt(id);
-			out.writeInt(k);
 			
 			out.writeInt(paths.size());
 			for(Pair pair : paths){
@@ -587,15 +644,30 @@ public class Index{
 			}
 			
 			if(full){
-				out.writeInt(labels.size());
-				for(LabelSequence seq : labels){
-					seq.write(out);
+				out.writeInt(k);
+				
+				out.writeInt(labels == null ? 0 : labels.size());
+				if(labels != null){
+					for(LabelSequence seq : labels){
+						seq.write(out);
+					}
 				}
-			}
-			
-			out.writeInt(canonCores.size());
-			for(CoreHash core : canonCores){
-				core.write(out);
+				
+				out.writeInt(ancestor == null ? -1 : ancestor.getId());
+				
+				out.writeInt(combinations == null ? 0 : combinations.size());
+				if(combinations != null){
+					for(BlockPair pair : combinations){
+						pair.write(out);
+					}
+				}
+				
+				out.writeInt(canonCores == null ? 0 : canonCores.size());
+				if(canonCores != null){
+					for(CoreHash core : canonCores){
+						core.write(out);
+					}
+				}
 			}
 		}
 
@@ -650,8 +722,8 @@ public class Index{
 			}else{
 				//all combinations of cores from previous layers (this can generate duplicates, but all are cores)
 				for(BlockPair pair : combinations){
-					for(CPQ core1 : pair.first.cores){
-						for(CPQ core2 : pair.second.cores){
+					for(CPQ core1 : pair.first().cores){
+						for(CPQ core2 : pair.second().cores){
 							candidates.add(CanonForm.computeCanon(CPQ.concat(core1, core2), true));
 						}
 					}
@@ -748,13 +820,6 @@ public class Index{
 			}
 			builder.append("}]");
 			return builder.toString();
-		}
-	}
-	
-	private static final record BlockPair(Block first, Block second){
-		
-		private BlockPair(PathPair pair){
-			this(pair.getFirst().getBlock(), pair.getSecond().getBlock());
 		}
 	}
 	
