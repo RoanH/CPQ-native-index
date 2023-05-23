@@ -44,7 +44,6 @@ public class Index{
 	private final boolean computeLabels;
 	private final boolean computeCores;
 	private final int k;
-	private final boolean verbose;//storage of labels & cpqs
 	
 	
 	
@@ -53,6 +52,9 @@ public class Index{
 	private List<Block> blocks;
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
 	private RangeList<Predicate> predicates;
+	
+	
+	private ProgressListener progress = null;
 	
 	//TODO double check private/public of everything
 	
@@ -76,11 +78,11 @@ public class Index{
 		g.addUniqueEdge(0, 2, l0);
 		g.addUniqueEdge(1, 2, l1);
 //		g.addUniqueEdge(2, 1, l1);
-		Index eq = new Index(g, 1, true, true, 1, 2, true);
+		Index eq = new Index(g, 1, true, true, 1, 2, ProgressListener.NONE);
 		eq.sort();
 		eq.print();
 		
-		eq = new Index(g, 2, true, true, 1, 2, true);
+		eq = new Index(g, 2, true, true, 1, 2, ProgressListener.NONE);
 		eq.sort();
 		eq.print();
 		
@@ -91,21 +93,21 @@ public class Index{
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException, ExecutionException{
-		this(g, k, true, false, threads, maxIntersections, false);
+		this(g, k, true, false, threads, maxIntersections, ProgressListener.NONE);
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
-		this(g, k, computeCores, computeLabels, threads, Integer.MAX_VALUE, false);
+		this(g, k, computeCores, computeLabels, threads, Integer.MAX_VALUE, ProgressListener.NONE);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, boolean verbose) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, ProgressListener listener) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		this.computeCores = computeCores;
 		this.computeLabels = computeLabels;
 		this.maxIntersections = maxIntersections;
 		this.k = k;
-		this.verbose = verbose;
 		layers = new RangeList<List<Block>>(k, ArrayList::new);
 		blocks = layers.get(k - 1);
+		setProgressListener(listener == null ? ProgressListener.NONE : listener);
 		
 		computeBlocks(partition(g));
 		if(computeCores){
@@ -120,7 +122,6 @@ public class Index{
 		computeLabels = in.readBoolean();
 		maxIntersections = in.readInt();
 		k = in.readInt();
-		verbose = in.readBoolean();
 		//TODO layers/blocks?
 		
 		predicates = new RangeList<Predicate>(in.readInt());
@@ -142,7 +143,6 @@ public class Index{
 		out.writeBoolean(computeLabels);
 		out.writeInt(maxIntersections);
 		out.writeInt(k);
-		out.writeBoolean(verbose);
 		
 		out.writeInt(predicates.size());
 		for(Predicate p : predicates){
@@ -168,6 +168,10 @@ public class Index{
 		System.out.println("ret: " + coreToBlock.get(key));
 		
 		return coreToBlock.getOrDefault(key, Collections.emptyList()).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
+	}
+	
+	public void setProgressListener(ProgressListener listener){
+		progress = listener;
 	}
 	
 	/**
@@ -262,9 +266,10 @@ public class Index{
 		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
 		
 		for(int j = 0; j < k; j++){
-			List<Block> layerBlocks = layers.get(j);
 			final int lk = j + 1;
-			
+			progress.computeBlocksStart(lk);
+
+			List<Block> layerBlocks = layers.get(j);
 			List<LabelledPath> segs = segments.get(j);
 			int start = 0;
 			int lastId = segs.get(0).getSegmentId();
@@ -289,6 +294,10 @@ public class Index{
 					}
 				}
 			}
+			
+			if(lk != k){
+				progress.computeBlocksEnd(lk);
+			}
 		}
 		
 		//any remaining pairs denote blocks from previous layers
@@ -308,6 +317,8 @@ public class Index{
 				}
 			}
 		}
+		
+		progress.computeBlocksEnd(k);
 	}
 	
 	private void computeCores(int threads) throws InterruptedException, ExecutionException{
@@ -337,6 +348,7 @@ public class Index{
 			throw new IllegalArgumentException("Invalid value of k for bisimulation, has to be 1 or greater.");
 		}
 		
+		progress.partitionStart(1);
 		RangeList<List<LabelledPath>> segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
 		Map<Pair, LabelledPath> history = new HashMap<Pair, LabelledPath>();
 		
@@ -357,10 +369,8 @@ public class Index{
 		}
 		
 		//sort 1-path
-		System.out.println("Start sort: 1");
 		List<LabelledPath> segOne = segments.get(0);
 		pathMap.values().stream().sorted(this::sortOnePath).forEachOrdered(segOne::add);
-		System.out.println("end sort");
 		
 		//assign block IDs
 		LabelledPath prev = null;
@@ -374,15 +384,18 @@ public class Index{
 			seg.setSegmentId(id);
 			prev = seg;
 		}
+		progress.partitionEnd(1);
 		
 		//classes for 2-path-bisimulation to k-path-bisimulation
 		for(int i = 1; i < k; i++){
+			progress.partitionStart(i + 1);
 			pathMap.clear();
 
 			id++;
 			for(int k1 = i - 1; k1 >= 0; k1--){//all combinations to make CPQi
 				int k2 = i - k1 - 1;
 				
+				progress.partitionCombinationStart(k1 + 1, k2 + 1);
 				for(LabelledPath seg : segments.get(k1)){
 					for(LabelledPath end : segments.get(k2)){
 						if(seg.getTarget() != end.getSource()){
@@ -406,14 +419,14 @@ public class Index{
 						}
 					}
 				}
+				
+				progress.partitionCombinationEnd(k1 + 1, k2 + 1);
 			}
 			
 			//sort
-			System.out.println("Start sort: " + (i + 1));
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().forEach(LabelledPath::cacheHashCode);
 			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
-			System.out.println("end sort");
 
 			//assign IDs
 			prev = null;
@@ -426,6 +439,8 @@ public class Index{
 				path.setSegmentId(id);
 				prev = path;
 			}
+			
+			progress.partitionEnd(i + 1);
 		}
 		
 		return segments;
@@ -491,7 +506,7 @@ public class Index{
 			paths = slice.stream().map(LabelledPath::getPair).collect(Collectors.toList());
 			slice.forEach(s->s.setBlock(this));
 			
-			if(computeLabels || k == 1 || verbose){
+			if(computeLabels || k == 1){
 				//we need labels to compute cores for k = 1
 				labels.addAll(range.getLabels());
 			}
@@ -566,7 +581,7 @@ public class Index{
 		}
 		
 		private void addCore(CanonForm canon){
-			if(canonCores.add(canon.toHashCanon()) && (k != Index.this.k || verbose)){//no need to store coes on the last layer
+			if(canonCores.add(canon.toHashCanon())){
 				cores.add(canon.getCPQ());
 			}
 		}
@@ -582,10 +597,7 @@ public class Index{
 			if(ancestor != null){//only need to go back one level since the previous level already collected the level before that
 				//these are by definition of a different diameter
 				canonCores.addAll(ancestor.canonCores);
-				if(verbose || k != Index.this.k){
-					//we do not need to store core structure for the last layer
-					cores.addAll(ancestor.cores);
-				}
+				cores.addAll(ancestor.cores);
 			}
 			
 			//all cores so far are inherited fully processed cores from the ancestor, we skip these for intersections
@@ -707,13 +719,76 @@ public class Index{
 	}
 	
 	public static abstract interface ProgressListener{
+		public static final ProgressListener NONE = new ProgressListener(){
+			
+			@Override
+			public void partitionStart(int k){
+			}
+			
+			@Override
+			public void partitionEnd(int k){
+			}
+			
+			@Override
+			public void partitionCombinationStart(int k1, int k2){
+			}
+			
+			@Override
+			public void partitionCombinationEnd(int k1, int k2){
+			}
+			
+			@Override
+			public void computeBlocksStart(int k){
+			}
+			
+			@Override
+			public void computeBlocksEnd(int k){
+			}
+		};
 		
+		public static final ProgressListener LOG = new ProgressListener(){
+			
+			@Override
+			public void partitionStart(int k){
+				System.out.println(System.currentTimeMillis() + " Partition start k=" + k);
+			}
+			
+			@Override
+			public void partitionEnd(int k){
+				System.out.println(System.currentTimeMillis() + " Partition end k=" + k);
+			}
+			
+			@Override
+			public void partitionCombinationStart(int k1, int k2){
+				System.out.println(System.currentTimeMillis() + " Partition combination start " + k1 + "x" + k2);
+			}
+			
+			@Override
+			public void partitionCombinationEnd(int k1, int k2){
+				System.out.println(System.currentTimeMillis() + " Partition combination end " + k1 + "x" + k2);
+			}
+			
+			@Override
+			public void computeBlocksStart(int k){
+				System.out.println(System.currentTimeMillis() + " Block start k=" + k);
+			}
+			
+			@Override
+			public void computeBlocksEnd(int k){
+				System.out.println(System.currentTimeMillis() + " Block end k=" + k);
+			}
+		};
+
 		public abstract void partitionStart(int k);
 		
 		public abstract void partitionCombinationStart(int k1, int k2);
 		
 		public abstract void partitionCombinationEnd(int k1, int k2);
 		
-		public abstract void partitioningDone(int k);
+		public abstract void partitionEnd(int k);
+		
+		public abstract void computeBlocksStart(int k);
+		
+		public abstract void computeBlocksEnd(int k);
 	}
 }
