@@ -805,18 +805,22 @@ public class Index{
 			builder.append(",paths=");
 			builder.append(paths);
 			builder.append(",labels={");
-			for(LabelSequence seq : labels){
-				builder.append(seq.toString());
-				builder.append(",");
-			}
-			builder.delete(builder.length() - 1, builder.length());
-			builder.append("},cores={");
-			for(CPQ core : cores){
-				builder.append(core.toString());
-				builder.append(",");
-			}
-			if(!cores.isEmpty()){
+			if(labels != null){
+				for(LabelSequence seq : labels){
+					builder.append(seq.toString());
+					builder.append(",");
+				}
 				builder.delete(builder.length() - 1, builder.length());
+			}
+			builder.append("},cores={");
+			if(cores != null){
+				for(CPQ core : cores){
+					builder.append(core.toString());
+					builder.append(",");
+				}
+				if(!cores.isEmpty()){
+					builder.delete(builder.length() - 1, builder.length());
+				}
 			}
 			builder.append("}]");
 			return builder.toString();
