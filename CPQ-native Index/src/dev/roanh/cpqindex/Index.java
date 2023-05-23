@@ -81,6 +81,7 @@ public class Index{
 		eq.sort();
 		eq.print();
 		
+
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
@@ -96,7 +97,6 @@ public class Index{
 	}
 	
 	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, ProgressListener listener) throws IllegalArgumentException, InterruptedException, ExecutionException{
-		this.computeCores = computeCores;
 		this.computeLabels = computeLabels;
 		this.maxIntersections = maxIntersections;
 		this.k = k;
@@ -107,7 +107,9 @@ public class Index{
 		computeBlocks(partition(g));
 		if(computeCores){
 			computeCores(threads);
-			mapCoresToBlocks();
+			this.computeCores = true;
+		}else{
+			this.computeCores = false;
 		}
 	}
 	
@@ -166,7 +168,7 @@ public class Index{
 		}
 	}
 	
-	public List<Pair> query(CPQ cpq) throws IllegalArgumentException, InterruptedException, ExecutionException{//TODO how to handle exceptions
+	public List<Pair> query(CPQ cpq) throws IllegalArgumentException, InterruptedException, ExecutionException{
 		if(cpq.getDiameter() > k){
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
@@ -263,11 +265,13 @@ public class Index{
 	}
 	
 	private void mapCoresToBlocks(){
+		progress.mapStart();
 		for(Block block : blocks){
 			for(CoreHash core : block.canonCores){
 				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
 			}
 		}
+		progress.mapEnd();
 	}
 	
 	private void computeBlocks(RangeList<List<LabelledPath>> segments){
@@ -355,6 +359,8 @@ public class Index{
 		executor.shutdown();
 		computeCores = true;
 		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.cores.size()).sum());
+		
+		mapCoresToBlocks();
 	}
 	
 	//partition according to k-path-bisimulation
@@ -780,6 +786,14 @@ public class Index{
 			@Override
 			public void coresEnd(int k){
 			}
+
+			@Override
+			public void mapStart(){
+			}
+
+			@Override
+			public void mapEnd(){
+			}
 		};
 		
 		public static final ProgressListener LOG = new ProgressListener(){
@@ -828,6 +842,16 @@ public class Index{
 			public void coresEnd(int k){
 				System.out.println(System.currentTimeMillis() + " Cores end k=" + k);
 			}
+
+			@Override
+			public void mapStart(){
+				System.out.println(System.currentTimeMillis() + " Map start");
+			}
+
+			@Override
+			public void mapEnd(){
+				System.out.println(System.currentTimeMillis() + " Map end");
+			}
 		};
 
 		public abstract void partitionStart(int k);
@@ -847,5 +871,9 @@ public class Index{
 		public abstract void coresBlocksDone(int done, int total);
 
 		public abstract void coresEnd(int k);
+		
+		public abstract void mapStart();
+		
+		public abstract void mapEnd();
 	}
 }
