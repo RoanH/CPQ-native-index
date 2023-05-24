@@ -8,7 +8,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -106,7 +105,7 @@ public class Main{
 			}
 
 			index.write(Files.newOutputStream(output), full);
-		}catch(IllegalArgumentException | InterruptedException | ExecutionException | IOException e){
+		}catch(IllegalArgumentException | InterruptedException | IOException e){
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

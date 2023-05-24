@@ -16,10 +16,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
@@ -51,19 +53,19 @@ public class Index{
 	
 	private ProgressListener progress;
 		
-	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException{
 		this(g, k, threads, Integer.MAX_VALUE);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException{
 		this(g, k, true, false, threads, maxIntersections, ProgressListener.NONE);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException{
 		this(g, k, computeCores, computeLabels, threads, Integer.MAX_VALUE, ProgressListener.NONE);
 	}
 	
-	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, ProgressListener listener) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, ProgressListener listener) throws IllegalArgumentException, InterruptedException{
 		this.computeLabels = computeLabels;
 		this.maxIntersections = maxIntersections;
 		this.k = k;
@@ -329,7 +331,7 @@ public class Index{
 		progress.computeBlocksEnd(k);
 	}
 	
-	public void computeCores(int threads) throws InterruptedException, ExecutionException{
+	public void computeCores(int threads) throws InterruptedException{
 		if(computeCores){
 			throw new IllegalStateException("Cores have already been computed.");
 		}else if(predicates == null){
@@ -342,11 +344,37 @@ public class Index{
 		for(int i = 0; i < k; i++){
 			progress.coresStart(i + 1);
 			
-			int done = 0;
-			List<Future<?>> tasks = layers.get(i).stream().<Future<?>>map(b->executor.submit(b::computeCores)).toList();
-			for(Future<?> future : tasks){
-				future.get();
-				progress.coresBlocksDone(++done, tasks.size());
+			final int total = layers.get(i).size();
+			Lock lock = new ReentrantLock();
+			Condition cond = lock.newCondition();
+			AtomicInteger done = new AtomicInteger(0);
+			for(Block block : layers.get(i)){
+				executor.submit(()->{
+					block.computeCores();
+
+					if(done.incrementAndGet() == total){
+						lock.lock();
+					}else if(!lock.tryLock()){
+						return;
+					}
+
+					cond.signal();
+					lock.unlock();
+				});
+			}
+			
+			while(true){
+				try{
+					lock.lock();
+					cond.await();
+					int val = done.get();
+					progress.coresBlocksDone(val, total);
+					if(val == total){
+						break;
+					}
+				}finally{
+					lock.unlock();
+				}
 			}
 			
 			progress.coresEnd(i + 1);
