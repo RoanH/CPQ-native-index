@@ -641,9 +641,11 @@ public class Index{
 			return paths.get(0).isLoop();
 		}
 		
-		private void addCore(CanonForm canon){
+		private void addCore(CanonForm canon, boolean noSave){
 			if(canonCores.add(canon.toHashCanon())){
-				cores.add(canon.getCPQ());
+				if(!noSave){
+					cores.add(canon.getCPQ());
+				}
 			}
 		}
 		
@@ -657,16 +659,17 @@ public class Index{
 			
 			//all cores so far are inherited fully processed cores from the ancestor, we skip these for intersections
 			final int skip = cores.size();
+			boolean noSave = k == Index.this.k && !computeLabels;
 			
 			if(combinations.isEmpty()){
 				//for layer 1 the cores are the label sequences (which are distinct cores)
-				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(this::addCore);
+				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(c->this.addCore(c, false));
 			}else{
 				//all combinations of cores from previous layers (this can generate duplicates, but all are cores)
 				for(BlockPair pair : combinations){
 					for(CPQ core1 : pair.first().cores){
 						for(CPQ core2 : pair.second().cores){
-							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), true));
+							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), true), false);
 						}
 					}
 				}
@@ -689,17 +692,17 @@ public class Index{
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts);
+			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave && !isLoop());
 			
 			//intersect with identity if possible (this can generate duplicates or non-cores)
 			if(isLoop()){
 				final int max = cores.size();
 				for(int i = skip; i < max; i++){
-					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false));
+					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false), noSave);
 				}
 			}
 			
-			if(k == Index.this.k && !computeLabels){
+			if(noSave){
 				cores = null;
 				labels = null;
 				ancestor = null;
@@ -707,14 +710,14 @@ public class Index{
 			}
 		}
 		
-		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts){
+		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave){
 			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
-					addCore(CanonForm.computeCanon(CPQ.intersect(set), true));
+					addCore(CanonForm.computeCanon(CPQ.intersect(set), true), noSave);
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts);
+				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, noSave);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -726,7 +729,7 @@ public class Index{
 				
 				selected[offset] = true;
 				set.add(items.get(offset));
-				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts);
+				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave);
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
