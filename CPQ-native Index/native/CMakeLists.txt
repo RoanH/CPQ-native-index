@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(nauty C)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O4 -mpopcnt -march=native -DUSE_TLS")
 set(CMAKE_INSTALL_LIBDIR "${PROJECT_SOURCE_DIR}/../lib")
 set(CMAKE_FIND_LIBRARY_PREFIXES "lib" "")
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".dll.a" ".a" ".lib" ".so")
