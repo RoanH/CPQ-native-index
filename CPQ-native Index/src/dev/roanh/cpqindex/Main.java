@@ -3,6 +3,7 @@ package dev.roanh.cpqindex;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -88,15 +89,20 @@ public class Main{
 		boolean full = cli.hasOption('f');
 		
 		try(InputStream in = Files.newInputStream(data)){
+			Path name = data.getFileName();
+			if(name == null){
+				throw new IllegalArgumentException("Input file has no name");
+			}
+			
 			Index index;
-			if(data.getFileName().endsWith(".idx")){
+			if(name.endsWith(".idx")){
 				index = new Index(in);
 				if(cores){
 					index.computeCores(threads);
 				}
 			}else{
 				UniqueGraph<Integer, Predicate> g = IndexUtil.readGraph(in);
-				index = new Index(g, k, cores, labels, threads, intersections, verbose ? ProgressListener.stream(new PrintStream(logFile)) : ProgressListener.NONE);
+				index = new Index(g, k, cores, labels, threads, intersections, verbose ? ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8)) : ProgressListener.NONE);
 			}
 
 			index.write(Files.newOutputStream(output), full);
@@ -132,8 +138,9 @@ public class Main{
 	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
 		try(DirectoryStream<Path> libs = Files.newDirectoryStream(Paths.get("lib"), Files::isRegularFile)){
 			for(Path lib : libs){
-				if(lib.getFileName() != null && !lib.getFileName().toString().endsWith(".jar")){
-					System.out.println("Loading native library: " + lib.getFileName());
+				Path name = lib.getFileName();
+				if(name != null && !name.toString().endsWith(".jar")){
+					System.out.println("Loading native library: " + name);
 					System.load(lib.toAbsolutePath().toString());
 				}
 			}

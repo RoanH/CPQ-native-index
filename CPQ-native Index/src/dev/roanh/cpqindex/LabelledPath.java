@@ -320,4 +320,9 @@ public final class LabelledPath{
 	public int hashCode(){
 		return segId;
 	}
+	
+	@Override
+	public boolean equals(Object obj){
+		return segId == ((LabelledPath)obj).segId;
+	}
 }
