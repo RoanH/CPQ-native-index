@@ -53,22 +53,6 @@ public class Main{
 		HelpFormatter help = new HelpFormatter();
 		help.setWidth(120);
 		help.printHelp("index", options, true);
-		
-		
-		
-		//TODO
-		
-		try{
-//			Thread.sleep(10000);
-			System.out.println("START");
-			//Instant start = Instant.now();//advogato, robots
-			Index index = new Index(IndexUtil.readGraph(Paths.get("C:\\Users\\roanh\\Documents\\2 Thesis\\Datasets\\robots.edge")), 2, true, false, 6, Integer.MAX_VALUE, ProgressListener.LOG);//cores, labels
-			//index.write(Files.newOutputStream(Paths.get("test.bin")), false);
-			//System.out.println("done: " + Duration.between(start, Instant.now()).toString());
-		}catch(Exception e){
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 	/**
@@ -100,8 +84,15 @@ public class Main{
 					index.computeCores(threads);
 				}
 			}else{
-				UniqueGraph<Integer, Predicate> g = IndexUtil.readGraph(in);
-				index = new Index(g, k, cores, labels, threads, intersections, verbose ? ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8)) : ProgressListener.NONE);
+				index = new Index(
+					IndexUtil.readGraph(in),
+					k,
+					cores,
+					labels,
+					threads,
+					intersections,
+					verbose ? (logFile == null ? ProgressListener.LOG : ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8))) : ProgressListener.NONE
+				);
 			}
 
 			index.write(Files.newOutputStream(output), full);

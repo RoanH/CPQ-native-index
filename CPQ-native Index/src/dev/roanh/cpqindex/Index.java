@@ -349,7 +349,7 @@ public class Index{
 			Condition cond = lock.newCondition();
 			AtomicInteger done = new AtomicInteger(0);
 			for(Block block : layers.get(i)){
-				executor.submit(()->{
+				executor.execute(()->{
 					block.computeCores();
 
 					if(done.incrementAndGet() == total){
@@ -358,8 +358,11 @@ public class Index{
 						return;
 					}
 
-					cond.signal();
-					lock.unlock();
+					try{
+						cond.signal();
+					}finally{
+						lock.unlock();
+					}
 				});
 			}
 			
