@@ -634,10 +634,10 @@ public class IndexTest{
 		}
 	}
 	
-	private void checkCores(Block block, String... expected) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	private void checkCores(Block block, String... expected){
 		assertEquals(expected.length, block.getCanonCores().size());
 		for(String cpq : expected){
-			CoreHash canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).get().toHashCanon();
+			CoreHash canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).toHashCanon();
 			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);
 		}
 	}

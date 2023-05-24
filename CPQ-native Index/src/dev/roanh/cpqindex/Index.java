@@ -21,7 +21,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import dev.roanh.cpqindex.CanonForm.CanonFuture;
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
@@ -163,12 +162,12 @@ public class Index{
 		}
 	}
 	
-	public List<Pair> query(CPQ cpq) throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public List<Pair> query(CPQ cpq) throws IllegalArgumentException{
 		if(cpq.getDiameter() > k){
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		CoreHash key = CanonForm.computeCanon(cpq, false).get().toHashCanon();
+		CoreHash key = CanonForm.computeCanon(cpq, false).toHashCanon();
 		System.out.println("key: " + key);
 		System.out.println("ret: " + coreToBlock.get(key));
 		
@@ -355,7 +354,7 @@ public class Index{
 		
 		executor.shutdown();
 		computeCores = true;
-		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.cores.size()).sum());
+		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.canonCores.size()).sum());
 		
 		mapCoresToBlocks();
 	}
@@ -505,16 +504,15 @@ public class Index{
 		private final int id;
 		private final int k;
 		private final List<Pair> paths;
-		private final List<LabelSequence> labels;
-		private final List<CPQ> cores;//TODO never restored after write read
+		private List<LabelSequence> labels;
+		private List<CPQ> cores;//TODO never restored after write read - some cleared after compute
 		private final Set<CoreHash> canonCores;
-		
+		private List<BlockPair> combinations;
 		/**
 		 * The block from the previous layer that the paths in this block were stored at.
 		 * @see #paths
 		 */
-		private final Block ancestor;
-		private final List<BlockPair> combinations;
+		private Block ancestor;
 		
 		private Block(int k, List<LabelledPath> slice){
 			this.k = k;
@@ -649,17 +647,6 @@ public class Index{
 			}
 		}
 		
-		private void addCores(List<CanonFuture> candidates){
-			try{
-				for(CanonFuture future : candidates){
-					addCore(future.get());
-				}
-			}catch(InterruptedException | ExecutionException e){
-				//we do not ever interrupt nauty
-				throw new RuntimeException(e);
-			}
-		}
-		
 		private void computeCores(){
 			//inherited from previous layer blocks
 			if(ancestor != null){//only need to go back one level since the previous level already collected the level before that
@@ -670,24 +657,20 @@ public class Index{
 			
 			//all cores so far are inherited fully processed cores from the ancestor, we skip these for intersections
 			final int skip = cores.size();
-			List<CanonFuture> candidates = new ArrayList<CanonFuture>();
 			
 			if(combinations.isEmpty()){
 				//for layer 1 the cores are the label sequences (which are distinct cores)
-				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(candidates::add);
+				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(this::addCore);
 			}else{
 				//all combinations of cores from previous layers (this can generate duplicates, but all are cores)
 				for(BlockPair pair : combinations){
 					for(CPQ core1 : pair.first().cores){
 						for(CPQ core2 : pair.second().cores){
-							candidates.add(CanonForm.computeCanon(CPQ.concat(core1, core2), true));
+							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), true));
 						}
 					}
 				}
 			}
-			
-			addCores(candidates);
-			candidates.clear();
 			
 			//all intersections of cores (exactly, these are all distinct cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
@@ -706,28 +689,32 @@ public class Index{
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, candidates);
-			addCores(candidates);
+			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts);
 			
 			//intersect with identity if possible (this can generate duplicates or non-cores)
 			if(isLoop()){
-				candidates.clear();
 				final int max = cores.size();
 				for(int i = skip; i < max; i++){
-					candidates.add(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false));
+					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false));
 				}
-				addCores(candidates);
+			}
+			
+			if(k == Index.this.k && !computeLabels){
+				cores = null;
+				labels = null;
+				ancestor = null;
+				combinations = null;
 			}
 		}
 		
-		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, List<CanonFuture> candidates){
+		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts){
 			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
-					candidates.add(CanonForm.computeCanon(CPQ.intersect(set), true));
+					addCore(CanonForm.computeCanon(CPQ.intersect(set), true));
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, candidates);
+				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -739,7 +726,7 @@ public class Index{
 				
 				selected[offset] = true;
 				set.add(items.get(offset));
-				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, candidates);
+				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts);
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
