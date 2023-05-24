@@ -50,7 +50,7 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 		return NULL;
 	}
 
-	//return canonical labeling
+	//copy canonical labeling
 	jintArray result = (*env)->NewIntArray(env, n);
 
 	jint data[n];
@@ -59,5 +59,13 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 	}
 	(*env)->SetIntArrayRegion(env, result, 0, n, data);
 
+	//cleanup
+	SG_FREE(graph);
+	DYNFREE(labels, labels_sz)
+	DYNFREE(ptn, ptn_sz)
+	DYNFREE(orbits, orbits_sz)
+	SG_FREE(canon);
+
+	//return the labeling
 	return result;
 }
