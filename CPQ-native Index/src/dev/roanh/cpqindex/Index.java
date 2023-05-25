@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -348,7 +349,9 @@ public class Index{
 			Lock lock = new ReentrantLock();
 			Condition cond = lock.newCondition();
 			AtomicInteger done = new AtomicInteger(0);
-			for(Block block : layers.get(i)){
+			ListIterator<Block> iter = layers.get(i).listIterator(total);
+			while(iter.hasPrevious()){
+				Block block = iter.previous();
 				executor.execute(()->{
 					block.computeCores();
 
@@ -552,9 +555,12 @@ public class Index{
 			id = range.getSegmentId();
 			paths = slice.stream().map(LabelledPath::getPair).collect(Collectors.toList());
 			slice.forEach(s->s.setBlock(this));
+			combinations = range.getSegments().stream().map(BlockPair::new).toList();
+			cores = new ArrayList<CPQ>();
+			canonCores = new HashSet<CoreHash>();
 			
-			if(computeLabels || k == 1){
-				//we need labels to compute cores for k = 1
+			if(computeLabels || combinations.isEmpty()){
+				//we need labels to compute cores for k = 1 and in rare cases higher k where a k = 1 block did not get any higher k paths added
 				labels = new ArrayList<LabelSequence>();
 				labels.addAll(range.getLabels());
 			}else{
@@ -570,10 +576,6 @@ public class Index{
 			}else{
 				ancestor = null;
 			}
-			
-			combinations = range.getSegments().stream().map(BlockPair::new).toList();
-			cores = new ArrayList<CPQ>();
-			canonCores = new HashSet<CoreHash>();
 		}
 		
 		private Block(DataInputStream in, boolean full, RangeList<Block> blockMap) throws IOException{
