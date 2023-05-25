@@ -1,6 +1,12 @@
 #include <dev_roanh_cpqindex_Nauty.h>
 #include <core.h>
 
+static TLS_ATTR int* labels;
+static TLS_ATTR int* ptn;
+static TLS_ATTR int* orbits;
+static TLS_ATTR SG_DECL(inputGraph);
+static TLS_ATTR SG_DECL(canon);
+
 /**
  * Computes and returns the canonical form of the given colored graph using
  * the sparse version of nauty.
@@ -20,8 +26,7 @@
  */
 JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNIEnv* env, jclass obj, jobjectArray adj, jintArray colors){
 	//construct input graph
-	SG_DECL(graph);
-	constructSparseGraph(env, &adj, &graph);
+	constructSparseGraph(env, &adj, &inputGraph);
 
 	//set nauty settings
 	static DEFAULTOPTIONS_SPARSEDIGRAPH(options);
@@ -30,7 +35,7 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 	options.defaultptn = FALSE;
 
 	//allocated data structures
-	int n = graph.nv;
+	int n = inputGraph.nv;
 	DYNALLSTAT(int, labels, labels_sz);
 	DYNALLSTAT(int, ptn, ptn_sz);
 	DYNALLSTAT(int, orbits, orbits_sz);
@@ -42,8 +47,7 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 	parseColoring(env, n, &colors, labels, ptn);
 
 	//compute canonical form and labeling
-	SG_DECL(canon);
-	sparsenauty(&graph, labels, ptn, orbits, &options, &stats, &canon);
+	sparsenauty(&inputGraph, labels, ptn, orbits, &options, &stats, &canon);
 
 	//check for errors
 	if(stats.errstatus != 0){
@@ -58,13 +62,6 @@ JNIEXPORT jintArray JNICALL Java_dev_roanh_cpqindex_Nauty_computeCanonSparse(JNI
 		data[i] = labels[i];
 	}
 	(*env)->SetIntArrayRegion(env, result, 0, n, data);
-
-	//cleanup
-	SG_FREE(graph);
-	DYNFREE(labels, labels_sz)
-	DYNFREE(ptn, ptn_sz)
-	DYNFREE(orbits, orbits_sz)
-	SG_FREE(canon);
 
 	//return the labeling
 	return result;
