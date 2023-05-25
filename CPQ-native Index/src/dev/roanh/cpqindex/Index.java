@@ -273,6 +273,14 @@ public class Index{
 		progress.mapEnd();
 	}
 	
+	public int getTotalCores(){
+		return coreToBlock.values().stream().mapToInt(List::size).sum();
+	}
+	
+	public int getUniqueCores(){
+		return coreToBlock.size();
+	}
+	
 	private void computeBlocks(RangeList<List<LabelledPath>> segments){
 		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
 		
