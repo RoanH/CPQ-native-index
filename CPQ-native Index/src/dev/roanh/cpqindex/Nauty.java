@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Edge;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.DataProxy;
 import dev.roanh.gmark.util.UniqueGraph;
@@ -60,57 +63,90 @@ public class Nauty{
 	protected static int[] prepareColors(ColoredGraph graph){
 		int[] colors = new int[graph.getNodeCount()];
 		int idx = 0;
-		for(List<Integer> group : graph.getColorLists()){
-			for(int i = 0; i < group.size() - 1; i++){
-				colors[idx++] = group.get(i) + 1;
+		for(int[] group : graph.getColorLists()){
+			for(int i = 0; i < group.length - 1; i++){
+				colors[idx++] = group[i] + 1;
 			}
-			colors[idx++] = -group.get(group.size() - 1) - 1;
+			colors[idx++] = -group[group.length - 1] - 1;
 		}
 		return colors;
 	}
 	
-	/**
-	 * Converts the given input graph to a coloured graph instance
-	 * by grouping vertices with their colour determined by the
-	 * content of their {@link DataProxy} instance. All vertex data
-	 * objects that are not DataProxy instances are given the same colour.
-	 * @param <V> The vertex data type.
-	 * @param <E> The edge label data type.
-	 * @param graph The input graph to transform.
-	 * @param source The data for the source vertex of the graph.
-	 * @param target The data for the target vertex of the graph.
-	 * @return The constructed coloured graph.
-	 * @see ColoredGraph
-	 */
-	@SuppressWarnings("unchecked")
-	public static <V, E> ColoredGraph toColoredGraph(UniqueGraph<V, E> graph, V source, V target){
-		Map<Predicate, List<Integer>> colorMap = new HashMap<Predicate, List<Integer>>();
-		int[][] adj = graph.toAdjacencyList();
-		List<Integer> nolabel = new ArrayList<Integer>();
-		int src = -1;
-		int trg = -1;
+	//also does transform
+	public static ColoredGraph toColoredGraph(QueryGraphCPQ graph){
+		//compute degrees
+		Map<Predicate, LabelData> colorMap = new HashMap<Predicate, LabelData>();
+		int[] deg = new int[graph.getVertexCount() + graph.getEdgeCount()];
+		for(Edge edge : graph.getEdges()){
+			deg[edge.getSource().getID()]++;
+			deg[edge.getID()]++;
+			colorMap.computeIfAbsent(edge.getLabel(), k->new LabelData()).idx++;
+		}
 		
-		for(GraphNode<V, E> node : graph.getNodes()){
-			V data = node.getData();
-			if(data instanceof DataProxy){
-				colorMap.computeIfAbsent(((DataProxy<Predicate>)data).getData(), k->new ArrayList<Integer>()).add(node.getID());
-			}else if(data.equals(source)){
-				src = node.getID();
-			}else if(data.equals(target)){
-				trg = node.getID();
-			}else{
-				nolabel.add(node.getID());
+		//pre size arrays
+		int[][] adj = new int[graph.getVertexCount() + graph.getEdgeCount()][];
+		for(int i = 0; i < deg.length; i++){
+			adj[i] = new int[deg[i]];
+		}
+		
+		//pre size maps
+		for(LabelData lab : colorMap.values()){
+			lab.data = new int[lab.idx];
+		}
+		
+		//compute adjacencies
+		for(Edge edge : graph.getEdges()){
+			int eid = edge.getID();
+			int sid = edge.getSource().getID();
+			
+			adj[eid][--deg[eid]] = edge.getTarget().getID();
+			adj[sid][--deg[sid]] = eid;
+			
+			LabelData data = colorMap.get(edge.getLabel());
+			data.data[--data.idx] = eid;
+		}
+		
+		//collect no label vertices
+		int[] nolabel = new int[graph.isLoop() ? (graph.getVertexCount() - 1) : (graph.getVertexCount() - 2)];
+		int idx = 0;
+		for(Vertex vertex : graph.getVertices()){
+			if(vertex != graph.getSourceVertex() && vertex != graph.getTargetVertex()){
+				nolabel[idx++] = vertex.getID();
 			}
 		}
 		
+		//process label data
+		List<Entry<Predicate, int[]>> labels = new ArrayList<Entry<Predicate, int[]>>(colorMap.size());
+		colorMap.entrySet().stream().sorted(Entry.comparingByKey()).forEach(e->labels.add(Map.entry(e.getKey(), e.getValue().data)));
+		
+		//put together the final graph
 		return new ColoredGraph(
 			adj,
-			src == -1 ? trg : src,
-			trg == -1 ? src : trg,
-			colorMap.entrySet().stream().sorted(Entry.comparingByKey()).collect(Collectors.toCollection(ArrayList::new)),
+			graph.getSourceVertex().getID(),
+			graph.getTargetVertex().getID(),
+			labels,
 			nolabel
 		);
 	}
+	
+	private static final class LabelData{
+		private int idx;
+		private int[] data;
+	}
+	
+//	/**
+//	 * Converts the given input graph to a coloured graph instance
+//	 * by grouping vertices with their colour determined by the
+//	 * content of their {@link DataProxy} instance. All vertex data
+//	 * objects that are not DataProxy instances are given the same colour.
+//	 * @param <V> The vertex data type.
+//	 * @param <E> The edge label data type.
+//	 * @param graph The input graph to transform.
+//	 * @param source The data for the source vertex of the graph.
+//	 * @param target The data for the target vertex of the graph.
+//	 * @return The constructed coloured graph.
+//	 * @see ColoredGraph
+//	 */
 	
 	/**
 	 * Represents a coloured graph. Colours are assigned to 4 categories
@@ -136,11 +172,11 @@ public class Nauty{
 		 * Excludes the special collection of nodes without
 		 * label. The list items are sorted on predicate ID.
 		 */
-		private List<Entry<Predicate, List<Integer>>> labels;
+		private List<Entry<Predicate, int[]>> labels;
 		/**
 		 * List of node IDs that have no label.
 		 */
-		private List<Integer> noLabel;
+		private int[] noLabel;
 		private int source;
 		private int target;
 		
@@ -153,7 +189,7 @@ public class Nauty{
 		 * @param labels A list of node IDs for each label.
 		 * @param nolabel A list of node IDs without any label.
 		 */
-		private ColoredGraph(int[][] adj, int source, int target, List<Entry<Predicate, List<Integer>>> labels, List<Integer> nolabel){
+		private ColoredGraph(int[][] adj, int source, int target, List<Entry<Predicate, int[]>> labels, int[] nolabel){
 			graph = adj;
 			this.labels = labels;
 			noLabel = nolabel;
@@ -173,7 +209,7 @@ public class Nauty{
 		 * Gets the IDs of nodes without a label/colour.
 		 * @return The IDs of nodes without a label/colour.
 		 */
-		public List<Integer> getNoLabels(){
+		public int[] getNoLabels(){
 			return noLabel;
 		}
 		
@@ -183,7 +219,7 @@ public class Nauty{
 		 * vertices with that colour.
 		 * @return Gets the IDs of the coloured vertices and labels.
 		 */
-		public List<Entry<Predicate, List<Integer>>> getLabels(){
+		public List<Entry<Predicate, int[]>> getLabels(){
 			return labels;
 		}
 		
@@ -192,17 +228,19 @@ public class Nauty{
 		 * lists where each list has the IDs of vertices of the same colour.
 		 * @return The colour information as a list of lists.
 		 */
-		public List<List<Integer>> getColorLists(){
-			List<List<Integer>> colors = new ArrayList<List<Integer>>(labels.size() + 1 + (source == target ? 1 : 2));
+		public List<int[]> getColorLists(){
+			List<int[]> colors = new ArrayList<int[]>(labels.size() + 1 + (source == target ? 1 : 2));
 			
-			colors.add(Collections.singletonList(source));
+			colors.add(new int[]{source});
 			if(target != source){
-				colors.add(Collections.singletonList(target));
+				colors.add(new int[]{target});
 			}
 			
-			labels.forEach(e->colors.add(e.getValue()));
+			for(Entry<Predicate, int[]> entry : labels){
+				colors.add(entry.getValue());
+			}
 			
-			if(!noLabel.isEmpty()){
+			if(noLabel.length > 0){
 				colors.add(noLabel);
 			}
 			

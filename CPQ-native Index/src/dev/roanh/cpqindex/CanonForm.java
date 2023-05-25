@@ -42,7 +42,8 @@ public class CanonForm{
 	 */
 	private final int target;
 	/**
-	 * A map containing the IDs of vertices with a specific label.
+	 * A map containing the IDs of vertices with a specific label. Note that this
+	 * is encoded as the length of ranges of IDs with the same label.
 	 */
 	private final Map<Predicate, Integer> labels;
 	/**
@@ -87,12 +88,8 @@ public class CanonForm{
 	public static CanonForm computeCanon(CPQ cpq, boolean isCore){
 		QueryGraphCPQ core = isCore ? cpq.toQueryGraph() : cpq.toQueryGraph().computeCore();
 		
-		UniqueGraph<Object, Void> transformed = Util.edgeLabelsToNodes(core.toUniqueGraph());
-		Vertex src = core.getSourceVertex();
-		Vertex trg = core.getTargetVertex();
-		
 		//compute a coloured graph
-		ColoredGraph input = Nauty.toColoredGraph(transformed, src, trg);
+		ColoredGraph input = Nauty.toColoredGraph(core);
 		
 		//compute the canonical labelling with nauty
 		int[] relabel = Nauty.computeCanonicalLabelling(input);
@@ -104,13 +101,13 @@ public class CanonForm{
 		}
  		
  		//relabel the source and target node
- 		int source = inv[transformed.getNode(src).getID()];
- 		int target = inv[transformed.getNode(trg).getID()];
+ 		int source = inv[core.getSourceVertex().getID()];
+ 		int target = inv[core.getTargetVertex().getID()];
  		
  		//relabel labels
  		Map<Predicate, Integer> labels = new LinkedHashMap<Predicate, Integer>();
- 		for(Entry<Predicate, List<Integer>> pair : input.getLabels()){
- 			labels.put(pair.getKey(), pair.getValue().size());
+ 		for(Entry<Predicate, int[]> pair : input.getLabels()){
+ 			labels.put(pair.getKey(), pair.getValue().length);
  		}
  		
  		//relabel the graph itself
