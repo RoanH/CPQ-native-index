@@ -3,8 +3,10 @@ package dev.roanh.cpqindex;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +16,9 @@ import java.util.Objects;
 import dev.roanh.cpqindex.Nauty.ColoredGraph;
 import dev.roanh.gmark.conjunct.cpq.CPQ;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Edge;
 import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.core.graph.Predicate;
-import dev.roanh.gmark.util.UniqueGraph;
-import dev.roanh.gmark.util.Util;
 
 /**
  * Utility class to compute and represent the canonical form of a CPQ.
@@ -89,7 +90,7 @@ public class CanonForm{
 		QueryGraphCPQ core = isCore ? cpq.toQueryGraph() : cpq.toQueryGraph().computeCore();
 		
 		//compute a coloured graph
-		ColoredGraph input = Nauty.toColoredGraph(core);
+		ColoredGraph input = toColoredGraph(core);
 		
 		//compute the canonical labelling with nauty
 		int[] relabel = Nauty.computeCanonicalLabelling(input);
@@ -122,6 +123,86 @@ public class CanonForm{
 		}
 		
 		return new CanonForm(source, target, labels, graph, cpq);
+	}
+	
+	/**
+	 * Converts the given input query graph to a coloured graph instance.
+	 * This is done by first transforming the graph to an unlabelled graph
+	 * and then group vertices by label.
+	 * @param graph The input query graph to transform.
+	 * @return The constructed coloured graph.
+	 * @see ColoredGraph
+	 */
+	public static ColoredGraph toColoredGraph(QueryGraphCPQ graph){
+		//compute degrees
+		Map<Predicate, LabelData> colorMap = new HashMap<Predicate, LabelData>();
+		int[] deg = new int[graph.getVertexCount() + graph.getEdgeCount()];
+		for(Edge edge : graph.getEdges()){
+			deg[edge.getSource().getID()]++;
+			deg[edge.getID()]++;
+			colorMap.computeIfAbsent(edge.getLabel(), k->new LabelData()).idx++;
+		}
+		
+		//pre size arrays
+		int[][] adj = new int[graph.getVertexCount() + graph.getEdgeCount()][];
+		for(int i = 0; i < deg.length; i++){
+			adj[i] = new int[deg[i]];
+		}
+		
+		//pre size maps
+		for(LabelData lab : colorMap.values()){
+			lab.data = new int[lab.idx];
+		}
+		
+		//compute adjacencies
+		for(Edge edge : graph.getEdges()){
+			int eid = edge.getID();
+			int sid = edge.getSource().getID();
+			
+			adj[eid][--deg[eid]] = edge.getTarget().getID();
+			adj[sid][--deg[sid]] = eid;
+			
+			LabelData data = colorMap.get(edge.getLabel());
+			data.data[--data.idx] = eid;
+		}
+		
+		//collect no label vertices
+		int[] nolabel = new int[graph.isLoop() ? (graph.getVertexCount() - 1) : (graph.getVertexCount() - 2)];
+		int idx = 0;
+		for(Vertex vertex : graph.getVertices()){
+			if(vertex != graph.getSourceVertex() && vertex != graph.getTargetVertex()){
+				nolabel[idx++] = vertex.getID();
+			}
+		}
+		
+		//process label data
+		List<Entry<Predicate, int[]>> labels = new ArrayList<Entry<Predicate, int[]>>(colorMap.size());
+		colorMap.entrySet().stream().sorted(Entry.comparingByKey()).forEach(e->labels.add(Map.entry(e.getKey(), e.getValue().data)));
+		
+		//put together the final graph
+		return new ColoredGraph(
+			adj,
+			graph.getSourceVertex().getID(),
+			graph.getTargetVertex().getID(),
+			labels,
+			nolabel
+		);
+	}
+	
+	/**
+	 * Simple object for compiling information on objects with the same label.
+	 * @author Roan
+	 * @see CanonForm#toColoredGraph(QueryGraphCPQ)
+	 */
+	private static final class LabelData{
+		/**
+		 * Current read/write index.
+		 */
+		private int idx;
+		/**
+		 * The IDs of labelled vertices.
+		 */
+		private int[] data;
 	}
 	
 	/**
@@ -212,6 +293,12 @@ public class CanonForm{
 		return Base64.getEncoder().encodeToString(toBinaryCanon());
 	}
 	
+	/**
+	 * Computes a wrapped representation of {@link #toBinaryCanon()}
+	 * that is more suitable for equality testing.
+	 * @return The CoreHash wrapped version of the binary canonical form.
+	 * @see CoreHash
+	 */
 	public CoreHash toHashCanon(){
 		return new CoreHash(toBinaryCanon());
 	}
@@ -226,15 +313,37 @@ public class CanonForm{
 		return Objects.hashCode(toBinaryCanon());
 	}
 	
+	/**
+	 * A small wrapper class for binary canonical forms that
+	 * caches the hash code of the canonical form.
+	 * @author Roan
+	 */
 	public static final class CoreHash{
+		/**
+		 * The binary canonical form.
+		 * @see CanonForm#toBinaryCanon()
+		 */
 		private final byte[] canon;
-		private int hash;
+		/**
+		 * The pre computed hash code of {@link #canon}.
+		 */
+		private final int hash;
 		
-		public CoreHash(byte[] canon){
+		/**
+		 * Constructs a new core hash by wrapping the given canonical form.
+		 * @param canon The binary canonical form to wrap.
+		 */
+		private CoreHash(byte[] canon){
 			this.canon = canon;
 			hash = Arrays.hashCode(canon);
 		}
 		
+		/**
+		 * Writes this canonical form to the given output stream.
+		 * @param out The stream to write to.
+		 * @throws IOException When an IOException occurs
+		 * @see #read(DataInputStream)
+		 */
 		public void write(DataOutputStream out) throws IOException{
 			out.writeInt(canon.length);
 			out.write(canon);
@@ -250,6 +359,12 @@ public class CanonForm{
 			return Arrays.equals(canon, ((CoreHash)obj).canon);
 		}
 		
+		/**
+		 * Reads a previously written CoreHash from the given input stream.
+		 * @param in The stream to read from.
+		 * @return The read CoreHash instance.
+		 * @throws IOException When an IOException occurs
+		 */
 		public static final CoreHash read(DataInputStream in) throws IOException{
 			byte[] data = new byte[in.readInt()];
 			in.readFully(data);

@@ -13,7 +13,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -52,7 +51,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void resumeTest() throws InterruptedException, ExecutionException, IOException{
+	public void resumeTest() throws InterruptedException, IOException{
 		Index index = new Index(testGraph, 3, false, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		index.write(out, true);
@@ -75,7 +74,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void writeReadTestFullResumeCores() throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
+	public void writeReadTestFullResumeCores() throws IllegalArgumentException, InterruptedException, IOException{
 		Index index = new Index(testGraph, 3, false, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		index.write(out, true);
@@ -98,7 +97,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void writeReadTestFull() throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
+	public void writeReadTestFull() throws IllegalArgumentException, InterruptedException, IOException{
 		Index index = new Index(testGraph, 3, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		index.write(out, true);
@@ -119,7 +118,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void writeReadTestPartial() throws IllegalArgumentException, InterruptedException, ExecutionException, IOException{
+	public void writeReadTestPartial() throws IllegalArgumentException, InterruptedException, IOException{
 		Index index = new Index(testGraph, 3, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		index.write(out, false);
@@ -138,7 +137,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void coresTest() throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public void coresTest() throws IllegalArgumentException, InterruptedException{
 		Predicate l0 = new Predicate(0, "0");
 		Predicate l1 = new Predicate(1, "1");
 		Predicate l2 = new Predicate(2, "2");
@@ -326,7 +325,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void robotsK2NoLabels() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException, ExecutionException{
+	public void robotsK2NoLabels() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
@@ -353,7 +352,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void robotsK2() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException, ExecutionException{
+	public void robotsK2() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots2.bin");
 		
@@ -376,7 +375,7 @@ public class IndexTest{
 	}
 	
 	@Test
-	public void robotsK1() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException, ExecutionException{
+	public void robotsK1() throws IOException, ClassNotFoundException, IllegalArgumentException, InterruptedException{
 		UniqueGraph<Integer, Predicate> graph = IndexUtil.readGraph(ClassLoader.getSystemResourceAsStream("robots.edge"));
 		List<Entry<List<String>, List<String>>> bin = readGraph("robots1.bin");
 		
@@ -399,7 +398,7 @@ public class IndexTest{
 	}
 
 	@Test
-	public void constructionTest() throws IllegalArgumentException, InterruptedException, ExecutionException{
+	public void constructionTest() throws IllegalArgumentException, InterruptedException{
 		Predicate l0 = new Predicate(0, "0");
 		Predicate l1 = new Predicate(1, "1");
 		Predicate l2 = new Predicate(2, "2");

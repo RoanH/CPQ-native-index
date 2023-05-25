@@ -1,20 +1,10 @@
 package dev.roanh.cpqindex;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Edge;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.core.graph.Predicate;
-import dev.roanh.gmark.util.DataProxy;
-import dev.roanh.gmark.util.UniqueGraph;
-import dev.roanh.gmark.util.UniqueGraph.GraphNode;
 
 /**
  * This class provides and interface to the native binding for nauty.
@@ -72,82 +62,6 @@ public class Nauty{
 		return colors;
 	}
 	
-	//also does transform
-	public static ColoredGraph toColoredGraph(QueryGraphCPQ graph){
-		//compute degrees
-		Map<Predicate, LabelData> colorMap = new HashMap<Predicate, LabelData>();
-		int[] deg = new int[graph.getVertexCount() + graph.getEdgeCount()];
-		for(Edge edge : graph.getEdges()){
-			deg[edge.getSource().getID()]++;
-			deg[edge.getID()]++;
-			colorMap.computeIfAbsent(edge.getLabel(), k->new LabelData()).idx++;
-		}
-		
-		//pre size arrays
-		int[][] adj = new int[graph.getVertexCount() + graph.getEdgeCount()][];
-		for(int i = 0; i < deg.length; i++){
-			adj[i] = new int[deg[i]];
-		}
-		
-		//pre size maps
-		for(LabelData lab : colorMap.values()){
-			lab.data = new int[lab.idx];
-		}
-		
-		//compute adjacencies
-		for(Edge edge : graph.getEdges()){
-			int eid = edge.getID();
-			int sid = edge.getSource().getID();
-			
-			adj[eid][--deg[eid]] = edge.getTarget().getID();
-			adj[sid][--deg[sid]] = eid;
-			
-			LabelData data = colorMap.get(edge.getLabel());
-			data.data[--data.idx] = eid;
-		}
-		
-		//collect no label vertices
-		int[] nolabel = new int[graph.isLoop() ? (graph.getVertexCount() - 1) : (graph.getVertexCount() - 2)];
-		int idx = 0;
-		for(Vertex vertex : graph.getVertices()){
-			if(vertex != graph.getSourceVertex() && vertex != graph.getTargetVertex()){
-				nolabel[idx++] = vertex.getID();
-			}
-		}
-		
-		//process label data
-		List<Entry<Predicate, int[]>> labels = new ArrayList<Entry<Predicate, int[]>>(colorMap.size());
-		colorMap.entrySet().stream().sorted(Entry.comparingByKey()).forEach(e->labels.add(Map.entry(e.getKey(), e.getValue().data)));
-		
-		//put together the final graph
-		return new ColoredGraph(
-			adj,
-			graph.getSourceVertex().getID(),
-			graph.getTargetVertex().getID(),
-			labels,
-			nolabel
-		);
-	}
-	
-	private static final class LabelData{
-		private int idx;
-		private int[] data;
-	}
-	
-//	/**
-//	 * Converts the given input graph to a coloured graph instance
-//	 * by grouping vertices with their colour determined by the
-//	 * content of their {@link DataProxy} instance. All vertex data
-//	 * objects that are not DataProxy instances are given the same colour.
-//	 * @param <V> The vertex data type.
-//	 * @param <E> The edge label data type.
-//	 * @param graph The input graph to transform.
-//	 * @param source The data for the source vertex of the graph.
-//	 * @param target The data for the target vertex of the graph.
-//	 * @return The constructed coloured graph.
-//	 * @see ColoredGraph
-//	 */
-	
 	/**
 	 * Represents a coloured graph. Colours are assigned to 4 categories
 	 * in this graph:
@@ -177,7 +91,13 @@ public class Nauty{
 		 * List of node IDs that have no label.
 		 */
 		private int[] noLabel;
+		/**
+		 * The ID of the source vertex of the graph.
+		 */
 		private int source;
+		/**
+		 * The ID of the target vertex of the graph.
+		 */
 		private int target;
 		
 		/**
@@ -189,7 +109,7 @@ public class Nauty{
 		 * @param labels A list of node IDs for each label.
 		 * @param nolabel A list of node IDs without any label.
 		 */
-		private ColoredGraph(int[][] adj, int source, int target, List<Entry<Predicate, int[]>> labels, int[] nolabel){
+		public ColoredGraph(int[][] adj, int source, int target, List<Entry<Predicate, int[]>> labels, int[] nolabel){
 			graph = adj;
 			this.labels = labels;
 			noLabel = nolabel;
