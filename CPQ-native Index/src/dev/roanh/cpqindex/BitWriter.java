@@ -44,19 +44,25 @@ public class BitWriter{
 	 *        write the given integer.
 	 */
 	public void writeInt(int i, int bits){
-		if(sub >= bits){
-			//fully fits
-			sub -= bits;
-			data[pos] |= (i & ((1 << bits) - 1)) << sub;
-			if(sub == 0){
+		while(bits > 0){
+			if(sub >= bits){
+				//fully fits
+				sub -= bits;
+				data[pos] |= (i & ((1 << bits) - 1)) << sub;
+				if(sub == 0){
+					pos++;
+					sub = 8;
+				}
+				
+				//bits always 0
+				return;
+			}else{
+				//need to split
+				bits -= sub;
+				data[pos] |= (i >>> bits) & ((1 << sub) - 1);
 				pos++;
 				sub = 8;
 			}
-		}else{
-			//need to split
-			bits -= sub;
-			writeInt((i >>> bits) & ((1 << sub) - 1), sub);
-			writeInt(i, bits);
 		}
 	}
 	
