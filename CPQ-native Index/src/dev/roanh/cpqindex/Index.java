@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -274,7 +275,7 @@ public class Index{
 	}
 	
 	public int getTotalCores(){
-		return coreToBlock.values().stream().mapToInt(List::size).sum();
+		return blocks.stream().mapToInt(b->b.canonCores.size()).sum();
 	}
 	
 	public int getUniqueCores(){
@@ -380,11 +381,14 @@ public class Index{
 			while(true){
 				try{
 					lock.lock();
-					cond.await();
-					int val = done.get();
-					progress.coresBlocksDone(val, total);
-					if(val == total){
-						break;
+					if(cond.await(1, TimeUnit.MINUTES)){//TODO increase timeout
+						int val = done.get();
+						progress.coresBlocksDone(val, total);
+						if(val == total){
+							break;
+						}
+					}else{
+						System.out.println("Cores: " + getTotalCores());
 					}
 				}finally{
 					lock.unlock();
@@ -542,10 +546,31 @@ public class Index{
 		return a.comparePathTo(b);
 	}
 	
+	/**
+	 * Representation of a single block in the index containing
+	 * the paths, labels and cores of the partition it represents.
+	 * @author Roan
+	 */
 	public final class Block{
+		/**
+		 * The ID of this block.
+		 */
 		private final int id;
+		/**
+		 * The value of k for the index layer this core belongs to.
+		 */
 		private final int k;
+		/**
+		 * A list of all paths stored at this block.
+		 */
 		private final List<Pair> paths;
+		/**
+		 * A list of all label sequences that map to this block. This is
+		 * the same set of label sequences as computed in the original
+		 * paper on language aware indexing. This list may also be set
+		 * to null if its computation is not explicitly requested by
+		 * setting {@link Index#computeLabels} to true.
+		 */
 		private List<LabelSequence> labels;
 		private List<CPQ> cores;//TODO never restored after write read - some cleared after compute
 		private final Set<CoreHash> canonCores;
@@ -716,6 +741,14 @@ public class Index{
 				}
 			}
 			
+			//intersect with identity if possible, these are always cores though not always unique
+			if(isLoop()){
+				final int max = cores.size();
+				for(int i = skip; i < max; i++){
+					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), true), noSave);
+				}
+			}
+			
 			//all intersections of cores (exactly, these are all distinct cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
 			for(int i = 0; i < graphs.length; i++){
@@ -733,14 +766,22 @@ public class Index{
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave && !isLoop());
-			
-			//intersect with identity if possible (this can generate duplicates or non-cores)
 			if(isLoop()){
-				final int max = cores.size();
-				for(int i = skip; i < max; i++){
-					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false), noSave);
+				boolean[][] revConflicts = new boolean[cores.size()][];
+				revConflicts[0] = new boolean[0];
+				for(int i = 1; i < revConflicts.length; i++){
+					QueryGraphCPQ a = graphs[i];
+					a.reverse();
+					revConflicts[i] = new boolean[i];
+					for(int j = 0; j < i; j++){
+						QueryGraphCPQ b = graphs[j];
+						revConflicts[i][j] = conflicts[i][j] || a.isHomomorphicTo(b) || b.isHomomorphicTo(a);
+					}
 				}
+				
+				computeIntersectionCoresIdentity(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, revConflicts, noSave, false);
+			}else{
+				computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave);
 			}
 			
 			if(noSave){
@@ -771,6 +812,42 @@ public class Index{
 				selected[offset] = true;
 				set.add(items.get(offset));
 				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave);
+				set.remove(set.size() - 1);
+				selected[offset] = false;
+			}
+		}
+		
+		private void computeIntersectionCoresIdentity(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, boolean[][] revConflicts, final boolean noSave, boolean conflict){
+			if(offset >= max || set.size() == maxIntersections){
+				if(set.size() >= 2){
+					addCore(CanonForm.computeCanon(CPQ.intersect(set), true), noSave);
+				}
+			}else{
+				//don't pick the element
+				computeIntersectionCoresIdentity(items, offset + 1, restricted, max, set, selected, conflicts, revConflicts, noSave, conflict);
+				
+				//pick the element
+				for(int i = 0; i < conflicts[offset].length; i++){
+					if(selected[i] && conflicts[offset][i]){
+						//can't pick a conflicting item
+						return;
+					}
+				}
+				
+				//determine new identity conflicts
+				if(!conflict){
+					for(int i = 0; i < revConflicts[offset].length; i++){
+						if(selected[i] && revConflicts[offset][i]){
+							//this combination has a conflict that makes it a not a core after identity intersection
+							conflict = true;
+							break;
+						}
+					}
+				}
+				
+				selected[offset] = true;
+				set.add(items.get(offset));
+				computeIntersectionCoresIdentity(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, revConflicts, noSave, conflict);
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}

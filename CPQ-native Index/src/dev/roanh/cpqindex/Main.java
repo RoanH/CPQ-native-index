@@ -95,6 +95,7 @@ public class Main{
 				);
 			}
 
+			index.getTotalCores();
 			index.write(Files.newOutputStream(output), full);
 		}catch(IllegalArgumentException | InterruptedException | IOException e){
 			// TODO Auto-generated catch block
