@@ -274,8 +274,8 @@ public class Index{
 		progress.mapEnd();
 	}
 	
-	public int getTotalCores(){
-		return blocks.stream().mapToInt(b->b.canonCores.size()).sum();
+	public long getTotalCores(){
+		return blocks.stream().mapToInt(b->b.canonCores.size()).summaryStatistics().getSum();
 	}
 	
 	public int getUniqueCores(){
@@ -381,7 +381,7 @@ public class Index{
 			while(true){
 				try{
 					lock.lock();
-					if(cond.await(1, TimeUnit.MINUTES)){//TODO increase timeout
+					if(cond.await(10, TimeUnit.MINUTES)){
 						int val = done.get();
 						progress.coresBlocksDone(val, total);
 						if(val == total){
