@@ -1,7 +1,9 @@
 package dev.roanh.cpqindex;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -95,8 +97,11 @@ public class Main{
 				);
 			}
 
-			index.getTotalCores();
-			index.write(Files.newOutputStream(output), full);
+			System.out.println("Total cores: " + index.getTotalCores());
+			try(OutputStream out = new BufferedOutputStream(Files.newOutputStream(output))){
+				index.write(out, full);
+				System.out.println("Index succesfully saved to disk.");
+			}
 		}catch(IllegalArgumentException | InterruptedException | IOException e){
 			// TODO Auto-generated catch block
 			e.printStackTrace();
