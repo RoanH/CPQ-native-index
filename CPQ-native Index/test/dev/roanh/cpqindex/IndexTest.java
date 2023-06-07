@@ -50,6 +50,10 @@ public class IndexTest{
 		}
 	}
 	
+	public static void main(String[] args) throws IllegalArgumentException, InterruptedException{
+		Index index = new Index(testGraph, 3, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+	}
+	
 	@Test
 	public void resumeTest() throws InterruptedException, IOException{
 		Index index = new Index(testGraph, 3, false, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
@@ -634,7 +638,7 @@ public class IndexTest{
 	}
 	
 	private void checkCores(Block block, String... expected){
-		assertEquals(expected.length, block.getCanonCores().size());
+		assertEquals(expected.length, block.getCanonCores().size(), "found: " + block.getCores());
 		for(String cpq : expected){
 			CoreHash canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).toHashCanon();
 			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);

@@ -731,23 +731,18 @@ public class Index{
 				//for layer 1 the cores are the label sequences (which are distinct cores)
 				labels.stream().map(LabelSequence::getLabels).map(CPQ::labels).map(q->CanonForm.computeCanon(q, true)).forEach(c->this.addCore(c, false));
 			}else{
-				//all combinations of cores from previous layers (this can generate duplicates, but all are cores)
+				//all combinations of cores from previous layers (this can generate duplicates, but all are cores unless either core is a loop)
 				for(BlockPair pair : combinations){
 					for(CPQ core1 : pair.first().cores){
 						for(CPQ core2 : pair.second().cores){
-							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), true), false);
+							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), !core1.isLoop() && !core2.isLoop()), false);
 						}
 					}
 				}
 			}
 			
-			//intersect with identity if possible, these are always cores though not always unique
-			if(isLoop()){
-				final int max = cores.size();
-				for(int i = skip; i < max; i++){
-					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), true), noSave);
-				}
-			}
+			//end of the range of new join cores
+			final int end = cores.size();
 			
 			//all intersections of cores (exactly, these are all distinct cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
@@ -779,9 +774,16 @@ public class Index{
 					}
 				}
 				
-				computeIntersectionCoresIdentity(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, revConflicts, noSave, false);
+				computeIntersectionCoresIdentity(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, revConflicts, noSave, false, false);
 			}else{
-				computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave);
+				computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave, false);
+			}
+			
+			//intersect with identity if possible, these are always cores though not always unique
+			if(isLoop()){
+				for(int i = skip; i < end; i++){
+					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), true), noSave);
+				}
 			}
 			
 			if(noSave){
@@ -792,14 +794,14 @@ public class Index{
 			}
 		}
 		
-		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave){
+		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave, boolean id){
 			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
-					addCore(CanonForm.computeCanon(CPQ.intersect(set), true), noSave);
+					addCore(CanonForm.computeCanon(CPQ.intersect(new ArrayList<CPQ>(set)), false/*!id*/), noSave);
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, noSave);
+				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, noSave, id);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -810,21 +812,26 @@ public class Index{
 				}
 				
 				selected[offset] = true;
-				set.add(items.get(offset));
-				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave);
+				CPQ q = items.get(offset);
+				set.add(q);
+				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave, id || q.hasIdentity());
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
 		}
 		
-		private void computeIntersectionCoresIdentity(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, boolean[][] revConflicts, final boolean noSave, boolean conflict){
+		private void computeIntersectionCoresIdentity(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, boolean[][] revConflicts, final boolean noSave, boolean conflict, boolean id){
 			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
-					addCore(CanonForm.computeCanon(CPQ.intersect(set), true), noSave);
+					CPQ q = CPQ.intersect(new ArrayList<CPQ>(set));
+					addCore(CanonForm.computeCanon(q, false/*!id*/), noSave);
+					if(!conflict){
+						addCore(CanonForm.computeCanon(CPQ.intersect(q, CPQ.id()), false/*!id*/), noSave);
+					}
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCoresIdentity(items, offset + 1, restricted, max, set, selected, conflicts, revConflicts, noSave, conflict);
+				computeIntersectionCoresIdentity(items, offset + 1, restricted, max, set, selected, conflicts, revConflicts, noSave, conflict, id);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -846,8 +853,9 @@ public class Index{
 				}
 				
 				selected[offset] = true;
-				set.add(items.get(offset));
-				computeIntersectionCoresIdentity(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, revConflicts, noSave, conflict);
+				CPQ q = items.get(offset);
+				set.add(q);
+				computeIntersectionCoresIdentity(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, revConflicts, noSave, conflict, id || q.hasIdentity());
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
