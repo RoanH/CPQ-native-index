@@ -735,13 +735,13 @@ public class Index{
 				for(BlockPair pair : combinations){
 					for(CPQ core1 : pair.first().cores){
 						for(CPQ core2 : pair.second().cores){
-							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), !core1.isLoop() && !core2.isLoop()), false);
+							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), false), false);
 						}
 					}
 				}
 			}
 			
-			//all intersections of cores (these are all distinct cores unless blackflow happens so we cannot assume them to be cores)
+			//all intersections of cores (these are all distinct cores unless blackflow happens, so we cannot assume them to be cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
 			for(int i = 0; i < graphs.length; i++){
 				graphs[i] = cores.get(i).toQueryGraph();

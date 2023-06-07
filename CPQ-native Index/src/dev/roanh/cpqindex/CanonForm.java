@@ -88,12 +88,6 @@ public class CanonForm{
 	 */
 	public static CanonForm computeCanon(CPQ cpq, boolean isCore){
 		QueryGraphCPQ core = isCore ? cpq.toQueryGraph() : cpq.toQueryGraph().computeCore();
-//		if(isCore){
-//			if(core.getVertexCount() != core.computeCore().getVertexCount()){
-//				System.err.println("Core not core! " + cpq.toString());
-//				System.exit(-1);
-//			}
-//		}
 		
 		//compute a coloured graph
 		ColoredGraph input = toColoredGraph(core);
