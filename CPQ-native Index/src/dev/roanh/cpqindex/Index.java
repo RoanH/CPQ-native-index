@@ -44,7 +44,7 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
  */
 public class Index{
 	private final int maxIntersections;
-	private final boolean computeLabels;
+	private final boolean computeLabels;//both labels and core labels
 	private final int k;
 	private boolean computeCores;
 	private RangeList<Predicate> predicates;
@@ -703,16 +703,20 @@ public class Index{
 			return labels;
 		}
 		
-		public boolean isLoop(){
+		public final boolean isLoop(){
 			return paths.get(0).isLoop();
 		}
 		
-		private void addCore(CanonForm canon, boolean noSave){
+		private final void addCore(CanonForm canon, boolean noSave){
 			if(canonCores.add(canon.toHashCanon())){
 				if(!noSave){
 					cores.add(canon.getCPQ());
 				}
 			}
+		}
+		
+		private final void addCore(CPQ q, boolean noSave){
+			addCore(CanonForm.computeCanon(q, false), noSave);
 		}
 		
 		private void computeCores(){
@@ -735,11 +739,14 @@ public class Index{
 				for(BlockPair pair : combinations){
 					for(CPQ core1 : pair.first().cores){
 						for(CPQ core2 : pair.second().cores){
-							addCore(CanonForm.computeCanon(CPQ.concat(core1, core2), false), false);
+							addCore(CPQ.concat(core1, core2), false);
 						}
 					}
 				}
 			}
+			
+			//all cores up to intersection
+			final int end = cores.size();
 			
 			//all intersections of cores (these are all distinct cores unless blackflow happens, so we cannot assume them to be cores)
 			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
@@ -758,13 +765,12 @@ public class Index{
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave && !isLoop());
+			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave, isLoop());
 			
-			//intersect with identity if possible, these are not always cores and not always unique
+			//intersect with identity if possible, these are not always cores and not always unique (not that intersections were already handled so they are skipped)
 			if(isLoop()){
-				final int max = cores.size();
-				for(int i = skip; i < max; i++){
-					addCore(CanonForm.computeCanon(CPQ.intersect(cores.get(i), CPQ.id()), false), noSave);
+				for(int i = skip; i < end; i++){
+					addCore(CPQ.intersect(cores.get(i), CPQ.id()), noSave);
 				}
 			}
 			
@@ -776,14 +782,18 @@ public class Index{
 			}
 		}
 		
-		private void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave){
+		private final void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave, final boolean id){
 			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
-					addCore(CanonForm.computeCanon(CPQ.intersect(new ArrayList<CPQ>(set)), false), noSave);
+					CPQ q = CPQ.intersect(new ArrayList<CPQ>(set));
+					addCore(q, noSave);
+					if(id){
+						addCore(CPQ.intersect(q, CPQ.id()), noSave);
+					}
 				}
 			}else{
 				//don't pick the element
-				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, noSave);
+				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, noSave, id);
 				
 				//pick the element
 				for(int i = 0; i < conflicts[offset].length; i++){
@@ -796,7 +806,7 @@ public class Index{
 				selected[offset] = true;
 				CPQ q = items.get(offset);
 				set.add(q);
-				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave);
+				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave, id);
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
