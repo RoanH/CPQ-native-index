@@ -43,9 +43,9 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
 public class Index{
-	private final int maxIntersections;
 	private final boolean computeLabels;//both labels and core labels
 	private final int k;
+	private int maxIntersections;
 	private boolean computeCores;
 	private RangeList<Predicate> predicates;
 
@@ -127,6 +127,10 @@ public class Index{
 
 			coreToBlock.put(key, blocks);
 		}
+	}
+	
+	public void setIntersections(int intersections){
+		maxIntersections = intersections;
 	}
 	
 	public void write(OutputStream target, boolean full) throws IOException{

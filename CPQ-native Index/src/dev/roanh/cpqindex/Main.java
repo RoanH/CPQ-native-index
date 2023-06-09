@@ -85,6 +85,7 @@ public class Main{
 				System.out.println("Computing cores for an existing index using " + threads + " threads.");
 				index = new Index(in);
 				index.setProgressListener(listener);
+				index.setIntersections(intersections);
 				if(cores){
 					index.computeCores(threads);
 				}
