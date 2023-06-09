@@ -50,8 +50,11 @@ public class IndexTest{
 		}
 	}
 	
+	//TODO remove
 	public static void main(String[] args) throws IllegalArgumentException, InterruptedException{
-		Index index = new Index(testGraph, 3, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		Index index = new Index(testGraph, 2, true, true, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		index.sort();
+		index.print();
 	}
 	
 	@Test

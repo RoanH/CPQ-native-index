@@ -767,7 +767,7 @@ public class Index{
 			
 			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave, isLoop());
 			
-			//intersect with identity if possible, these are not always cores and not always unique (not that intersections were already handled so they are skipped)
+			//intersect with identity if possible, these are not always cores and not always unique (note that intersections were already handled so they are skipped)
 			if(isLoop()){
 				for(int i = skip; i < end; i++){
 					addCore(CPQ.intersect(cores.get(i), CPQ.id()), noSave);

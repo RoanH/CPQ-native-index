@@ -80,12 +80,16 @@ public class Main{
 			}
 			
 			Index index;
-			if(name.endsWith(".idx")){
+			ProgressListener listener = verbose ? (logFile == null ? ProgressListener.LOG : ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8))) : ProgressListener.NONE;
+			if(name.toString().endsWith(".idx")){
+				System.out.println("Computing cores for an existing index using " + threads + " threads.");
 				index = new Index(in);
+				index.setProgressListener(listener);
 				if(cores){
 					index.computeCores(threads);
 				}
 			}else{
+				System.out.println("Computing index k=" + k + ", cores=" + cores + ", labels=" + labels + ", threads=" + threads + ", intersections=" + intersections + ".");
 				index = new Index(
 					IndexUtil.readGraph(in),
 					k,
@@ -93,7 +97,7 @@ public class Main{
 					labels,
 					threads,
 					intersections,
-					verbose ? (logFile == null ? ProgressListener.LOG : ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8))) : ProgressListener.NONE
+					listener
 				);
 			}
 
