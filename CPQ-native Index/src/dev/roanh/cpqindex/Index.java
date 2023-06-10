@@ -35,7 +35,7 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
 
 /**
  * Implementation of a graph database index based on k-path-bisimulation
- * and with support for indexing by CPQ cores. This index is based on the
+ * and with support for indexing by CPQ cores. This index is inspired by the
  * path index proposed by Yuya Sasaki, George Fletcher and Makoto Onizuka.
  * @author Roan
  * @see <a href="https://doi.org/10.1109/ICDE53745.2022.00054">Yuya Sasaki, George Fletcher and Makoto Onizuka,
@@ -43,30 +43,106 @@ import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
  * @see <a href="https://github.com/yuya-s/CPQ-aware-index">yuya-s/CPQ-aware-index</a>
  */
 public class Index{
-	private final boolean computeLabels;//both labels and core labels
+	/**
+	 * Boolean indicating whether explicit representations of cores
+	 * and label sequences should be saved for the computed blocks.
+	 * Saving these will take significantly more memory and is only
+	 * really relevant when printing the index with {@link #print()},
+	 * calling {@link Block#getCores()} or calling {@link Block#getLabels()}.
+	 */
+	private final boolean computeLabels;
+	/**
+	 * The value of k (the CPQ diameter) this index was computed for.
+	 */
 	private final int k;
+	/**
+	 * The maximum number of same layer CPQs allowed in a single intersection.
+	 */
 	private int maxIntersections;
+	/**
+	 * Whether CPQ cores should be or have been computed for this index.
+	 */
 	private boolean computeCores;
+	/**
+	 * List of predicates (labels) that appear in this index by ID.
+	 */
 	private RangeList<Predicate> predicates;
-
+	/**
+	 * List of blocks in this index by layer (index 0 is k = 1, etc).
+	 */
 	private RangeList<List<Block>> layers;
+	/**
+	 * List of all blocks in the final layer of this index.
+	 * This is the layer for k equal to {@link #k}.
+	 */
 	private List<Block> blocks;
+	/**
+	 * Map from CPQ core hash to the blocks this CPQ is present in.
+	 */
 	private Map<CoreHash, List<Block>> coreToBlock = new HashMap<CoreHash, List<Block>>();
-	
+	/**
+	 * Progress listener to inform of any computation updates.
+	 */
 	private ProgressListener progress;
-		
+	
+	/**
+	 * Constructs a new CPQ-native index for the given graph and diameter.
+	 * @param g The graph to compute and index for.
+	 * @param k The CPQ diameter k to compute the index for.
+	 * @param threads The number of CPU threads to use for computing cores.
+	 * @throws IllegalArgumentException When k is less than 1.
+	 * @throws InterruptedException When the current thread is interrupted during core computation.
+	 */
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads) throws IllegalArgumentException, InterruptedException{
 		this(g, k, threads, Integer.MAX_VALUE);
 	}
 	
+	/**
+	 * Constructs a new CPQ-native index for the given graph, diameter and diameter limit.
+	 * @param g The graph to compute and index for.
+	 * @param k The CPQ diameter k to compute the index for.
+	 * @param threads The number of CPU threads to use for computing cores.
+	 * @param maxIntersections The maximum number of same level CPQs allowed in intersections.
+	 *        Limiting intersection CPQs greatly decreases the number of cores that need to be computed.
+	 * @throws IllegalArgumentException When k is less than 1.
+	 * @throws InterruptedException When the current thread is interrupted during core computation.
+	 */
 	public Index(UniqueGraph<Integer, Predicate> g, int k, int threads, int maxIntersections) throws IllegalArgumentException, InterruptedException{
 		this(g, k, true, false, threads, maxIntersections, ProgressListener.NONE);
 	}
 	
+	/**
+	 * Constructs a new CPQ-native index for the given graph, diameter.
+	 * @param g The graph to compute and index for.
+	 * @param k The CPQ diameter k to compute the index for.
+	 * @param computeCores True to compute cores, if false cores are not computed
+	 *        and can instead later be computed using {@link #computeCores(int)} if desired.
+	 * @param computeLabels True to compute core and label sequence labels for each index block.
+	 * @param threads The number of CPU threads to use for computing cores.
+	 * @throws IllegalArgumentException When k is less than 1.
+	 * @throws InterruptedException When the current thread is interrupted during core computation.
+	 * @see #computeCores(int)
+	 */
 	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads) throws IllegalArgumentException, InterruptedException{
 		this(g, k, computeCores, computeLabels, threads, Integer.MAX_VALUE, ProgressListener.NONE);
 	}
 	
+	/**
+	 * Constructs a new CPQ-native index for the given graph, diameter.
+	 * @param g The graph to compute and index for.
+	 * @param k The CPQ diameter k to compute the index for.
+	 * @param computeCores True to compute cores, if false cores are not computed
+	 *        and can instead later be computed using {@link #computeCores(int)} if desired.
+	 * @param computeLabels True to compute core and label sequence labels for each index block.
+	 * @param threads The number of CPU threads to use for computing cores.
+	 * @param maxIntersections The maximum number of same level CPQs allowed in intersections.
+	 *        Limiting intersection CPQs greatly decreases the number of cores that need to be computed.
+	 * @param listener The progress listener to send computation progress updates to.
+	 * @throws IllegalArgumentException When k is less than 1.
+	 * @throws InterruptedException When the current thread is interrupted during core computation.
+	 * @see #computeCores(int)
+	 * @see ProgressListener
+	 */
 	public Index(UniqueGraph<Integer, Predicate> g, int k, boolean computeCores, boolean computeLabels, int threads, int maxIntersections, ProgressListener listener) throws IllegalArgumentException, InterruptedException{
 		this.computeLabels = computeLabels;
 		this.maxIntersections = maxIntersections;
@@ -84,6 +160,13 @@ public class Index{
 		}
 	}
 	
+	/**
+	 * Reads a previously saved index. Any previously
+	 * attached progress listeners will be detached.
+	 * @param source The input stream to read from.
+	 * @throws IOException When an IOException occurs.
+	 * @see #setProgressListener(ProgressListener)
+	 */
 	public Index(InputStream source) throws IOException{
 		DataInputStream in = new DataInputStream(source);
 		boolean full = in.readBoolean();
@@ -129,11 +212,30 @@ public class Index{
 		}
 	}
 	
-	public void setIntersections(int intersections){
+	/**
+	 * Sets the maximum number of same level CPQ intersections allowed.
+	 * Limiting intersection CPQs greatly decreases the number of cores that need to be computed.
+	 * Note that this limit does not count intersection with identity.
+	 * @param intersections The maximum number of CPQs in an intersection.
+	 * @throws IllegalStateException When cores have already been computed for this index.
+	 */
+	public final void setIntersections(int intersections) throws IllegalStateException{
+		if(computeCores){
+			throw new IllegalStateException("Cores have already been computed.");
+		}
+		
 		maxIntersections = intersections;
 	}
 	
-	public void write(OutputStream target, boolean full) throws IOException{
+	/**
+	 * Write this index to the given output stream.
+	 * @param target The output stream to write to.
+	 * @param full When true extra information is saved that
+	 *        is required for core computation.
+	 * @throws IOException When an IOException occurs.
+	 * @see #computeCores(int)
+	 */
+	public final void write(OutputStream target, boolean full) throws IOException{
 		DataOutputStream out = new DataOutputStream(target);
 		out.writeBoolean(full);
 		out.writeBoolean(computeCores);
@@ -170,19 +272,33 @@ public class Index{
 		}
 	}
 	
-	public List<Pair> query(CPQ cpq) throws IllegalArgumentException{
+	/**
+	 * Runs the given query on this index and returns the result. Note that
+	 * the intersection limit has to be respect if a limit was set.
+	 * @param cpq The query to run.
+	 * @return The paths matched by the query.
+	 * @throws IllegalArgumentException When the query has a diameter that
+	 *         is larger than the diameter of this index.
+	 * @see #setIntersections(int)
+	 * @see CPQ#getDiameter()
+	 */
+	public final List<Pair> query(CPQ cpq) throws IllegalArgumentException{
 		if(cpq.getDiameter() > k){
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
-		CoreHash key = CanonForm.computeCanon(cpq, false).toHashCanon();
-		System.out.println("key: " + key);
-		System.out.println("ret: " + coreToBlock.get(key));
-		
-		return coreToBlock.getOrDefault(key, Collections.emptyList()).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
+		return coreToBlock.getOrDefault(
+			CanonForm.computeCanon(cpq, false).toHashCanon(),
+			Collections.emptyList()
+		).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
 	}
 	
-	public void setProgressListener(ProgressListener listener){
+	/**
+	 * Sets the progress listener to send computation updates to.
+	 * @param listener The listener to send computation updates to.
+	 * @see ProgressListener
+	 */
+	public final void setProgressListener(ProgressListener listener){
 		progress = listener;
 	}
 	
@@ -190,7 +306,7 @@ public class Index{
 	 * Gets all the blocks in this index.
 	 * @return All the blocks in this index.
 	 */
-	public List<Block> getBlocks(){
+	public final List<Block> getBlocks(){
 		return blocks;
 	}
 	
@@ -200,7 +316,7 @@ public class Index{
 	 * more organised.
 	 * @see #print()
 	 */
-	public void sort(){
+	public final void sort(){
 		for(Block block : blocks){
 			block.paths.sort(null);
 			if(block.labels != null){
@@ -215,7 +331,7 @@ public class Index{
 	 * Prints the index to standard output.
 	 * @see #sort()
 	 */
-	public void print(){
+	public final void print(){
 		int maxPath = blocks.stream().mapToInt(b->b.paths.size()).max().orElse(0);
 		int maxLab = blocks.stream().mapToInt(b->b.labels.size()).max().orElse(0);
 		StringBuilder[] out = new StringBuilder[4 + maxPath + maxLab + blocks.stream().mapToInt(b->b.cores.size()).max().orElse(0)];
@@ -268,7 +384,10 @@ public class Index{
 		}
 	}
 	
-	private void mapCoresToBlocks(){
+	/**
+	 * Constructs the map from CPQ core has to the blocks this core occurrs in.
+	 */
+	private final void mapCoresToBlocks(){
 		progress.mapStart();
 		for(Block block : blocks){
 			for(CoreHash core : block.canonCores){
@@ -278,15 +397,32 @@ public class Index{
 		progress.mapEnd();
 	}
 	
-	public long getTotalCores(){
+	/**
+	 * Gets the total number of cores in this index, this is the sum
+	 * of all cores in each block.
+	 * @return The total number of cores.
+	 * @see #getUniqueCores()
+	 */
+	public final long getTotalCores(){
 		return blocks.stream().mapToInt(b->b.canonCores.size()).summaryStatistics().getSum();
 	}
 	
-	public int getUniqueCores(){
+	/**
+	 * Gets the total number of unique cores in this index, this is
+	 * the number of unique index keys.
+	 * @return The total number of unique cores.
+	 * @see #getTotalCores()
+	 */
+	public final int getUniqueCores(){
 		return coreToBlock.size();
 	}
 	
-	private void computeBlocks(RangeList<List<LabelledPath>> segments){
+	/**
+	 * After graph partitioning computes the index blocks.
+	 * @param segments The partitioned segments of the graph.
+	 * @see #partition(UniqueGraph)
+	 */
+	private final void computeBlocks(RangeList<List<LabelledPath>> segments){
 		Map<Pair, LabelledPath> unused = new HashMap<Pair, LabelledPath>();
 		
 		for(int j = 0; j < k; j++){
@@ -345,7 +481,20 @@ public class Index{
 		progress.computeBlocksEnd(k);
 	}
 	
-	public void computeCores(int threads) throws InterruptedException{
+	/**
+	 * Computes CPQ cores for each block in this index. Note that if this index
+	 * was saved and read back that it is only possible to compute cores if the
+	 * index was fully saved with extra state information.
+	 * @param threads The number of CPU threads to use to compute cores.
+	 * @throws InterruptedException When the current thread is interrupted.
+	 * @throws IllegalStateException When cores have already been computed for
+	 *         this index of when this index is read back and was not fully saved.
+	 * @see #setIntersections(int)
+	 * @see #setProgressListener(ProgressListener)
+	 * @see #write(OutputStream, boolean)
+	 * @see #Index(InputStream)
+	 */
+	public final void computeCores(int threads) throws InterruptedException, IllegalStateException{
 		if(computeCores){
 			throw new IllegalStateException("Cores have already been computed.");
 		}else if(predicates == null){
@@ -404,13 +553,16 @@ public class Index{
 		
 		executor.shutdown();
 		computeCores = true;
-		System.out.println("Total cores: " + blocks.stream().mapToLong(b->b.canonCores.size()).sum());
-		
 		mapCoresToBlocks();
 	}
 	
-	//partition according to k-path-bisimulation
-	private RangeList<List<LabelledPath>> partition(UniqueGraph<Integer, Predicate> g) throws IllegalArgumentException{
+	/**
+	 * Partitions all the paths in the given graph according to k-path-bisimulation.
+	 * @param g The graph to partition.
+	 * @return The partitioned paths in the graph.
+	 * @throws IllegalArgumentException When the diameter of this index k is less than 1.
+	 */
+	private final RangeList<List<LabelledPath>> partition(UniqueGraph<Integer, Predicate> g) throws IllegalArgumentException{
 		if(k <= 0){
 			throw new IllegalArgumentException("Invalid value of k for bisimulation, has to be 1 or greater.");
 		}
@@ -437,7 +589,7 @@ public class Index{
 		
 		//sort 1-path
 		List<LabelledPath> segOne = segments.get(0);
-		pathMap.values().stream().sorted(this::sortOnePath).forEachOrdered(segOne::add);
+		pathMap.values().stream().sorted(Index::sortOnePath).forEachOrdered(segOne::add);
 		
 		//assign block IDs
 		LabelledPath prev = null;
@@ -493,13 +645,13 @@ public class Index{
 			//sort
 			List<LabelledPath> segs = segments.get(i);
 			pathMap.values().forEach(LabelledPath::cacheHashCode);
-			pathMap.values().stream().sorted(this::sortPaths).forEachOrdered(segs::add);
+			pathMap.values().stream().sorted(Index::sortPaths).forEachOrdered(segs::add);
 
 			//assign IDs
 			prev = null;
 			for(LabelledPath path : segs){
 				if(prev != null && (path.compareSegmentsTo(prev) != 0 || prev.isLoop() ^ path.isLoop())){
-					//increase id if loop status or segments differs
+					//increase id if loop status or segments differ
 					id++;
 				}
 
@@ -519,10 +671,10 @@ public class Index{
 	 * @param a The first path.
 	 * @param b The second path.
 	 * @return A value less than 0 if {@code a < b}, a value equal
-	 *         to 0 if {@code a == b} and a value grater than 0 if
+	 *         to 0 if {@code a == b} and a value greater than 0 if
 	 *         {@code a > b}.
 	 */
-	private int sortPaths(LabelledPath a, LabelledPath b){
+	private static final int sortPaths(LabelledPath a, LabelledPath b){
 		int cmp = a.compareSegmentsTo(b);
 		if(cmp != 0){
 			return cmp;
@@ -536,7 +688,16 @@ public class Index{
 		return a.comparePathTo(b);
 	}
 	
-	private int sortOnePath(LabelledPath a, LabelledPath b){
+	/**
+	 * Compares the given paths based on their labels,
+	 * cyclic properties, source and target.
+	 * @param a The first path.
+	 * @param b The second path.
+	 * @return A value less than 0 if {@code a < b}, a value equal
+	 *         to 0 if {@code a == b} and a value greater than 0 if
+	 *         {@code a > b}.
+	 */
+	private static final int sortOnePath(LabelledPath a, LabelledPath b){
 		int cmp = a.compareLabelsTo(b);
 		if(cmp != 0){
 			return cmp;
@@ -576,8 +737,22 @@ public class Index{
 		 * setting {@link Index#computeLabels} to true.
 		 */
 		private List<LabelSequence> labels;
-		private List<CPQ> cores;//TODO never restored after write read - some cleared after compute
+		/**
+		 * Explicit core informations for cores stored in this block.
+		 * This list is never restored for an index that was saved and
+		 * read back and is also cleared after core computation unless
+		 * saving labels is enabled.
+		 * @see Index#computeLabels
+		 */
+		private List<CPQ> cores;
+		/**
+		 * Hashes for the cores in this index block. Explicit forms are
+		 * optionally stored in {@link #cores}.
+		 */
 		private final Set<CoreHash> canonCores;
+		/**
+		 * Blocks from previous layers that were combined to form this layer.
+		 */
 		private List<BlockPair> combinations;
 		/**
 		 * The block from the previous layer that the paths in this block were stored at.
@@ -585,6 +760,11 @@ public class Index{
 		 */
 		private Block ancestor;
 		
+		/**
+		 * Constructs a new index block for the given diameter and with the given paths.
+		 * @param k The diameter this block is for, corresponds to the index layer.
+		 * @param slice The paths to store at this block.
+		 */
 		private Block(int k, List<LabelledPath> slice){
 			this.k = k;
 			
@@ -615,6 +795,13 @@ public class Index{
 			}
 		}
 		
+		/**
+		 * Reads a previously saved block from the given input stream.
+		 * @param in The stream to read from.
+		 * @param full True if extra information has to be read.
+		 * @param blockMap A map of already read blocks indexed by ID.
+		 * @throws IOException When an IOException occurs.
+		 */
 		private Block(DataInputStream in, boolean full, RangeList<Block> blockMap) throws IOException{
 			id = in.readInt();
 			
@@ -659,7 +846,14 @@ public class Index{
 			}
 		}
 		
-		private void write(DataOutputStream out, boolean full) throws IOException{
+		/**
+		 * Writes this block to the given stream.
+		 * @param out The stream to write to.
+		 * @param full True to write extended information required
+		 *        to later compute cores.
+		 * @throws IOException When an IOException occurs.
+		 */
+		private final void write(DataOutputStream out, boolean full) throws IOException{
 			out.writeInt(id);
 			
 			out.writeInt(paths.size());
@@ -695,35 +889,94 @@ public class Index{
 			}
 		}
 
-		public int getId(){
+		/**
+		 * Gets the ID of this block. This is equal to
+		 * the ID of the segments this block was built from.
+		 * @return The ID of this block.
+		 */
+		public final int getId(){
 			return id;
 		}
 		
-		public List<Pair> getPaths(){
+		/**
+		 * Gets the paths stored at this block.
+		 * @return The paths for this block.
+		 */
+		public final List<Pair> getPaths(){
 			return paths;
 		}
 		
-		public List<LabelSequence> getLabels(){
+		/**
+		 * Gets the label sequences that map to this block.
+		 * @return The label sequences that map to this block.
+		 *         This value may be null unless label computation
+		 *         was explicitly requested via {@link Index#computeLabels}.
+		 */
+		public final List<LabelSequence> getLabels(){
 			return labels;
 		}
 		
+		/**
+		 * Gets the hashes of the cores that map to this block.
+		 * @return The cores for this block.
+		 */
+		public final Set<CoreHash> getCanonCores(){
+			return canonCores;
+		}
+		
+		/**
+		 * Gets the cores that map to this block.
+		 * @return The cores that map to this block.
+		 *         This value may be null unless label computation
+		 *         was explicitly requested via {@link Index#computeLabels}.
+		 */
+		public final List<CPQ> getCores(){
+			return cores;
+		}
+		
+		/**
+		 * Checks if this block represents a loop, this means that
+		 * all paths in this block have the same source and target vertex.
+		 * @return True if this block represents a loop.
+		 */
 		public final boolean isLoop(){
 			return paths.get(0).isLoop();
 		}
 		
-		private final void addCore(CanonForm canon, boolean noSave){
+		/**
+		 * Adds a new core to this index.
+		 * @param canon The canonical form of the core to add.
+		 * @param noSave True if the explicit form of this core
+		 *        does not need to be saved to {@link #cores}.
+		 * @return True if the core was new and added.
+		 */
+		private final boolean addCore(CanonForm canon, boolean noSave){
 			if(canonCores.add(canon.toHashCanon())){
 				if(!noSave){
 					cores.add(canon.getCPQ());
 				}
+				return true;
+			}else{
+				return false;
 			}
 		}
 		
-		private final void addCore(CPQ q, boolean noSave){
-			addCore(CanonForm.computeCanon(q, false), noSave);
+		/**
+		 * Adds a new core to this index.
+		 * @param q The CPQ to add, the core of this CPQ
+		 *        is always computed first before adding.
+		 * @param noSave True if the explicit form of this core
+		 *        does not need to be saved to {@link #cores}.
+		 * @return True if the core was new and added.
+		 */
+		private final boolean addCore(CPQ q, boolean noSave){
+			return addCore(CanonForm.computeCanon(q, false), noSave);
 		}
 		
-		private void computeCores(){
+		/**
+		 * Computes all the CPQ cores for this block.
+		 */
+		private final void computeCores(){
 			//inherited from previous layer blocks
 			if(ancestor != null){//only need to go back one level since the previous level already collected the level before that
 				//these are by definition of a different diameter
@@ -786,12 +1039,28 @@ public class Index{
 			}
 		}
 		
+		/**
+		 * Computes intersection derived CPQ for this index. All sub sets of the given
+		 * list of CPQs need to be intersected and added as a potential core.
+		 * @param items The list of CPQs to intersect all sub sets of.
+		 * @param offset The current CPQ in the list of CPQs to pick of skip for the
+		 *        subset currently being constructed.
+		 * @param restricted End of restricted range of CPQs. At most one CPQ from the range
+		 *        {@code 0...restricted} is allowed to to be included in an intersection as
+		 *        this range includes already computed intersections from a previous layer.
+		 * @param max The maximum index in the list of items to pick, higher indices are not considered.
+		 * @param set The set of CPQs picked for the current subset.
+		 * @param selected Boolean array indicating by index which CPQs are picked for the current subset.
+		 * @param conflicts Boolean matrix indicating which CPQs are subsets of each other and thus would
+		 *        never be a core if intersected.
+		 * @param noSave Whether explicit cores should be saved to {@link #cores}.
+		 * @param id True if this block is a loop so all computed cores also need to be intersected with identity.
+		 */
 		private final void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave, final boolean id){
 			if(offset >= max || set.size() == maxIntersections){
 				if(set.size() >= 2){
 					CPQ q = CPQ.intersect(new ArrayList<CPQ>(set));
-					addCore(q, noSave);
-					if(id){
+					if(addCore(q, noSave) && id){
 						addCore(CPQ.intersect(q, CPQ.id()), noSave);
 					}
 				}
@@ -814,14 +1083,6 @@ public class Index{
 				set.remove(set.size() - 1);
 				selected[offset] = false;
 			}
-		}
-		
-		public Set<CoreHash> getCanonCores(){
-			return canonCores;
-		}
-		
-		public List<CPQ> getCores(){
-			return cores;
 		}
 		
 		@Override
