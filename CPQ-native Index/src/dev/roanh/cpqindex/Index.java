@@ -385,13 +385,17 @@ public class Index{
 	}
 	
 	/**
-	 * Constructs the map from CPQ core has to the blocks this core occurrs in.
+	 * Constructs the map from CPQ core has to the blocks this core occurs in.
 	 */
 	private final void mapCoresToBlocks(){
 		progress.mapStart();
 		for(Block block : blocks){
 			for(CoreHash core : block.canonCores){
 				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
+			}
+			
+			if(!computeLabels){
+				block.canonCores = null;
 			}
 		}
 		progress.mapEnd();
@@ -749,7 +753,7 @@ public class Index{
 		 * Hashes for the cores in this index block. Explicit forms are
 		 * optionally stored in {@link #cores}.
 		 */
-		private final Set<CoreHash> canonCores;
+		private Set<CoreHash> canonCores;
 		/**
 		 * Blocks from previous layers that were combined to form this layer.
 		 */
@@ -919,6 +923,8 @@ public class Index{
 		/**
 		 * Gets the hashes of the cores that map to this block.
 		 * @return The cores for this block.
+		 *         This value may be null unless label computation
+		 *         was explicitly requested via {@link Index#computeLabels}.
 		 */
 		public final Set<CoreHash> getCanonCores(){
 			return canonCores;

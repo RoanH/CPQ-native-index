@@ -11,6 +11,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -88,6 +90,7 @@ public class Main{
 				throw new IllegalArgumentException("Input file has no name");
 			}
 			
+			Instant start = Instant.now();
 			Index index;
 			ProgressListener listener = verbose ? (logFile == null ? ProgressListener.LOG : ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8))) : ProgressListener.NONE;
 			if(name.toString().endsWith(".idx")){
@@ -110,8 +113,10 @@ public class Main{
 					listener
 				);
 			}
-
-			System.out.println("Total cores: " + index.getTotalCores() + " (Unique: " + index.getUniqueCores() + ")");
+			
+			Duration time = Duration.between(start, Instant.now());
+			System.out.printf("Total cores: %d (Unique: %d), raw runtime: %d:%02d:%02d\n", index.getTotalCores(), index.getUniqueCores(), time.toHours(), time.toMinutesPart(), time.toSecondsPart());
+			System.out.println("Saving index to disk...");
 			try(OutputStream out = new BufferedOutputStream(Files.newOutputStream(output))){
 				index.write(out, full);
 				System.out.println("Index succesfully saved to disk.");
