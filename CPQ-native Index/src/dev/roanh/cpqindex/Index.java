@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -954,16 +955,12 @@ public class Index{
 		 * @param canon The canonical form of the core to add.
 		 * @param noSave True if the explicit form of this core
 		 *        does not need to be saved to {@link #cores}.
-		 * @return True if the core was new and added.
 		 */
-		private final boolean addCore(CanonForm canon, boolean noSave){
+		private final void addCore(CanonForm canon, boolean noSave){
 			if(canonCores.add(canon.toHashCanon())){
 				if(!noSave){
 					cores.add(canon.getCPQ());
 				}
-				return true;
-			}else{
-				return false;
 			}
 		}
 		
@@ -973,10 +970,9 @@ public class Index{
 		 *        is always computed first before adding.
 		 * @param noSave True if the explicit form of this core
 		 *        does not need to be saved to {@link #cores}.
-		 * @return True if the core was new and added.
 		 */
-		private final boolean addCore(CPQ q, boolean noSave){
-			return addCore(CanonForm.computeCanon(q, false), noSave);
+		private final void addCore(CPQ q, boolean noSave){
+			addCore(CanonForm.computeCanon(q, false), noSave);
 		}
 		
 		/**
@@ -1017,18 +1013,45 @@ public class Index{
 				graphs[i] = cores.get(i).toQueryGraph();
 			}
 			
-			boolean[][] conflicts = new boolean[cores.size()][];
-			conflicts[0] = new boolean[0];
-			for(int i = 1; i < conflicts.length; i++){
+			final int max = cores.size();
+			BitSet[] conflicts = new BitSet[max];
+			conflicts[0] = new BitSet(0);
+			for(int i = 1; i < max; i++){
 				QueryGraphCPQ a = graphs[i];
-				conflicts[i] = new boolean[i];
-				for(int j = 0; j < i; j++){
+				conflicts[i] = new BitSet(i);
+				for(int j = skip; j < i; j++){
+					//if CPQs are homomorphic they collapse on intersection
 					QueryGraphCPQ b = graphs[j];
-					conflicts[i][j] = a.isHomomorphicTo(b) || b.isHomomorphicTo(a);
+					if(a.isHomomorphicTo(b) || b.isHomomorphicTo(a)){
+						conflicts[i].set(j);
+					}
 				}
 			}
 			
-			computeIntersectionCores(cores, 0, skip, cores.size(), new ArrayList<CPQ>(), new boolean[cores.size()], conflicts, noSave, isLoop());
+			List<CanonForm> held = new ArrayList<CanonForm>();
+			for(int i = skip; i < max; i++){
+				for(int j = 0; j < i; j++){
+					if(!conflicts[i].get(j)){
+						//this really only applies for k > 2, but any decrease in options is welcome
+						CPQ q = CPQ.intersect(cores.get(i), cores.get(j));
+						CanonForm canon = CanonForm.computeCanon(q, false);
+						held.add(canon);
+						if(canon.wasCore()){
+							if(isLoop()){
+								held.add(CanonForm.computeCanon(CPQ.intersect(q, CPQ.id()), false));
+							}
+						}else{
+							conflicts[i].set(j);
+						}
+					}
+				}
+			}
+			
+			computeIntersectionCores(cores, 0, skip, max, new ArrayList<CPQ>(), new BitSet(cores.size()), conflicts, noSave, isLoop());
+			
+			for(CanonForm form : held){
+				addCore(form, noSave);
+			}
 			
 			//intersect with identity if possible, these are not always cores and not always unique (note that intersections were already handled so they are skipped)
 			if(isLoop()){
@@ -1056,17 +1079,19 @@ public class Index{
 		 *        this range includes already computed intersections from a previous layer.
 		 * @param max The maximum index in the list of items to pick, higher indices are not considered.
 		 * @param set The set of CPQs picked for the current subset.
-		 * @param selected Boolean array indicating by index which CPQs are picked for the current subset.
-		 * @param conflicts Boolean matrix indicating which CPQs are subsets of each other and thus would
+		 * @param selected Bit set indicating by index which CPQs are picked for the current subset.
+		 * @param conflicts Bit set array indicating which CPQs are subsets of each other and thus would
 		 *        never be a core if intersected.
 		 * @param noSave Whether explicit cores should be saved to {@link #cores}.
 		 * @param id True if this block is a loop so all computed cores also need to be intersected with identity.
 		 */
-		private final void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, boolean[] selected, boolean[][] conflicts, final boolean noSave, final boolean id){
+		private final void computeIntersectionCores(List<CPQ> items, int offset, final int restricted, final int max, List<CPQ> set, BitSet selected, BitSet[] conflicts, final boolean noSave, final boolean id){
 			if(offset >= max || set.size() == maxIntersections){
-				if(set.size() >= 2){
+				if(set.size() >= 3){
 					CPQ q = CPQ.intersect(new ArrayList<CPQ>(set));
-					if(addCore(q, noSave) && id){
+					CanonForm canon = CanonForm.computeCanon(q, false);
+					addCore(canon, noSave);
+					if(id && canon.wasCore()){
 						addCore(CPQ.intersect(q, CPQ.id()), noSave);
 					}
 				}
@@ -1075,19 +1100,17 @@ public class Index{
 				computeIntersectionCores(items, offset + 1, restricted, max, set, selected, conflicts, noSave, id);
 				
 				//pick the element
-				for(int i = 0; i < conflicts[offset].length; i++){
-					if(selected[i] && conflicts[offset][i]){
-						//can't pick a conflicting item
-						return;
-					}
+				if(conflicts[offset].intersects(selected)){
+					//can't pick a conflicting item
+					return;
 				}
 				
-				selected[offset] = true;
+				selected.set(offset);
 				CPQ q = items.get(offset);
 				set.add(q);
 				computeIntersectionCores(items, offset < restricted ? restricted : (offset + 1), restricted, max, set, selected, conflicts, noSave, id);
 				set.remove(set.size() - 1);
-				selected[offset] = false;
+				selected.clear(offset);
 			}
 		}
 		

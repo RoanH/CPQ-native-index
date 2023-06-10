@@ -55,6 +55,10 @@ public class CanonForm{
 	 * The CPQ this canonical form was constructed from.
 	 */
 	private final CPQ cpq;
+	/**
+	 * True if the original input CPQ was a core.
+	 */
+	private final boolean wasCore;
 	
 	/**
 	 * Constructs a new canonical form with the given data.
@@ -63,13 +67,15 @@ public class CanonForm{
 	 * @param labels The IDs of labelled nodes by label.
 	 * @param graph The canonically labelled graph.
 	 * @param cpq The original CPQ.
+	 * @param wasCore True if the original input was a core.
 	 */
-	private CanonForm(int source, int target, Map<Predicate, Integer> labels, int[][] graph, CPQ cpq){
+	private CanonForm(int source, int target, Map<Predicate, Integer> labels, int[][] graph, CPQ cpq, boolean wasCore){
 		this.source = source;
 		this.target = target;
 		this.labels = labels;
 		this.graph = graph;
 		this.cpq = cpq;
+		this.wasCore = wasCore;
 	}
 	
 	/**
@@ -81,13 +87,22 @@ public class CanonForm{
 	}
 	
 	/**
+	 * Check if the original input CPQ turned out to be a core.
+	 * @return True if the original input was a core.
+	 */
+	public boolean wasCore(){
+		return wasCore;
+	}
+	
+	/**
 	 * Constructs a canonical form for the core of the given CPQ.
 	 * @param cpq The CPQ to compute a canonical form for.
 	 * @param isCore If the given CPQ is guaranteed to be a core.
 	 * @return The computed canonical form.
 	 */
 	public static CanonForm computeCanon(CPQ cpq, boolean isCore){
-		QueryGraphCPQ core = isCore ? cpq.toQueryGraph() : cpq.toQueryGraph().computeCore();
+		QueryGraphCPQ original = cpq.toQueryGraph();
+		QueryGraphCPQ core = isCore ? original : original.computeCore();
 		
 		//compute a coloured graph
 		ColoredGraph input = toColoredGraph(core);
@@ -122,7 +137,7 @@ public class CanonForm{
 			Arrays.sort(graph[i]);
 		}
 		
-		return new CanonForm(source, target, labels, graph, cpq);
+		return new CanonForm(source, target, labels, graph, cpq, original.getEdgeCount() == core.getEdgeCount());
 	}
 	
 	/**
