@@ -1,5 +1,6 @@
 package dev.roanh.cpqindex;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,12 +27,20 @@ import dev.roanh.gmark.core.graph.Predicate;
 import dev.roanh.gmark.util.GraphPanel;
 import dev.roanh.gmark.util.UniqueGraph;
 
+/**
+ * Main class and CLI interface for the index.
+ * @author Roan
+ */
 public class Main{
 	/**
 	 * The command line options.
 	 */
 	public static final Options options;
 
+	/**
+	 * Main subroutine, parses CLI options.
+	 * @param args The passed CLI options.
+	 */
 	public static void main(String[] args){
 		//initialise native bindings
 		try{
@@ -73,7 +82,7 @@ public class Main{
 		Path output = Paths.get(cli.getOptionValue('o'));
 		boolean full = cli.hasOption('f');
 		
-		try(InputStream in = Files.newInputStream(data)){
+		try(InputStream in = new BufferedInputStream(Files.newInputStream(data))){
 			Path name = data.getFileName();
 			if(name == null){
 				throw new IllegalArgumentException("Input file has no name");
@@ -82,7 +91,7 @@ public class Main{
 			Index index;
 			ProgressListener listener = verbose ? (logFile == null ? ProgressListener.LOG : ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8))) : ProgressListener.NONE;
 			if(name.toString().endsWith(".idx")){
-				System.out.println("Computing cores for an existing index using " + threads + " threads.");
+				System.out.println("Reading an existing index using " + threads + " threads, cores=" + cores + ", intersections=" + intersections + ".");
 				index = new Index(in);
 				index.setProgressListener(listener);
 				index.setIntersections(intersections);
@@ -108,7 +117,6 @@ public class Main{
 				System.out.println("Index succesfully saved to disk.");
 			}
 		}catch(IllegalArgumentException | InterruptedException | IOException e){
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
