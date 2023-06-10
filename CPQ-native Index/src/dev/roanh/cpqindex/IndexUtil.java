@@ -14,12 +14,32 @@ import dev.roanh.gmark.util.UniqueGraph;
 import dev.roanh.gmark.util.UniqueGraph.GraphNode;
 import dev.roanh.gmark.util.Util;
 
+/**
+ * Collection of some small index utilities.
+ * @author Roan
+ */
 public class IndexUtil{
 	
+	/**
+	 * Reads a graph from the given file where each line
+	 * is expected to contain information for a graph edge
+	 * in the format {@code source target label}
+	 * @param file The file to read from.
+	 * @return The read graph.
+	 * @throws IOException When an IOException occurs.
+	 */
 	public static UniqueGraph<Integer, Predicate> readGraph(Path file) throws IOException{
 		return readGraph(Files.newInputStream(file));
 	}
 	
+	/**
+	 * Reads a graph from the given plain text input stream
+	 * each line  is expected to contain information for a
+	 * graph edge in the format {@code source target label}
+	 * @param in The input stream to read from (plain text).
+	 * @return The read graph.
+	 * @throws IOException When an IOException occurs.
+	 */
 	public static UniqueGraph<Integer, Predicate> readGraph(InputStream in) throws IOException{
 		try(BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))){
 			String line = reader.readLine();
