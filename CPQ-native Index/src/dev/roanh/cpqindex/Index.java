@@ -408,7 +408,7 @@ public class Index{
 	 * @see #getUniqueCores()
 	 */
 	public final long getTotalCores(){
-		return blocks.stream().mapToInt(b->b.canonCores.size()).summaryStatistics().getSum();
+		return coreToBlock.values().stream().mapToInt(List::size).summaryStatistics().getSum();
 	}
 	
 	/**
