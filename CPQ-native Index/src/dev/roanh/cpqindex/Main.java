@@ -115,7 +115,7 @@ public class Main{
 			}
 			
 			Duration time = Duration.between(start, Instant.now());
-			System.out.printf("Total cores: %d (Unique: %d), raw runtime: %d:%02d:%02d\n", index.getTotalCores(), index.getUniqueCores(), time.toHours(), time.toMinutesPart(), time.toSecondsPart());
+			System.out.printf("Total cores: %d (Unique: %d), raw runtime: %d:%02d:%02d%n", index.getTotalCores(), index.getUniqueCores(), time.toHours(), time.toMinutesPart(), time.toSecondsPart());
 			System.out.println("Saving index to disk...");
 			try(OutputStream out = new BufferedOutputStream(Files.newOutputStream(output))){
 				index.write(out, full);
