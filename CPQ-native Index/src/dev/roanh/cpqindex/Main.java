@@ -111,7 +111,7 @@ public class Main{
 				);
 			}
 
-			System.out.println("Total cores: " + index.getTotalCores());
+			System.out.println("Total cores: " + index.getTotalCores() + " (Unique: " + index.getUniqueCores() + ")");
 			try(OutputStream out = new BufferedOutputStream(Files.newOutputStream(output))){
 				index.write(out, full);
 				System.out.println("Index succesfully saved to disk.");
