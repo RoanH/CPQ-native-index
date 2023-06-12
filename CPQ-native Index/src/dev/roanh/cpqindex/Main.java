@@ -5,8 +5,6 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -90,9 +88,19 @@ public class Main{
 				throw new IllegalArgumentException("Input file has no name");
 			}
 			
+			ProgressListener listener = ProgressListener.NONE;
+			if(verbose){
+				if(logFile == null){
+					listener = ProgressListener.LOG;
+				}else if(logFile.startsWith("discord:")){
+					listener = ProgressListener.discord(logFile.substring(8), "https://discord.com/api/webhooks/1117760934782455868/r23OWBOCp6Z884gLpKysSfnBWscaYcdmVIErNfyi4W7rwu8Y5DqSLcUuNCwTy7hcz6aD");
+				}else{
+					listener = ProgressListener.file(logFile);
+				}
+			}
+			
 			Instant start = Instant.now();
 			Index index;
-			ProgressListener listener = verbose ? (logFile == null ? ProgressListener.LOG : ProgressListener.stream(new PrintStream(logFile, StandardCharsets.UTF_8))) : ProgressListener.NONE;
 			if(name.toString().endsWith(".idx")){
 				System.out.println("Reading an existing index using " + threads + " threads, cores=" + cores + ", intersections=" + intersections + ".");
 				index = new Index(in);

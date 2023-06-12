@@ -1,6 +1,11 @@
 package dev.roanh.cpqindex;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+
+import club.minnced.discord.webhook.WebhookClient;
+import club.minnced.discord.webhook.WebhookClientBuilder;
 
 /**
  * Interface for index construction progress listeners.
@@ -60,6 +65,10 @@ public abstract interface ProgressListener{
 
 		@Override
 		public void mapEnd(){
+		}
+
+		@Override
+		public void intermediateProgress(long cores, int blockDone, int totalBlocks){
 		}
 	};
 	
@@ -133,68 +142,153 @@ public abstract interface ProgressListener{
 	public abstract void mapEnd();
 	
 	/**
+	 * Logs and intermediate progress update.
+	 * @param cores The total number of cores computed so far.
+	 * @param blockDone The total number of blocks done.
+	 * @param totalBlocks THe total number of blocks.
+	 */
+	public abstract void intermediateProgress(long cores, int blockDone, int totalBlocks);
+	
+	/**
 	 * Constructs a new progress listener that logs all
-	 * event to the given print stream.
+	 * event to the given print stream. Intermediate updates
+	 * are still printed to standard out.
 	 * @param out The print stream to log to.
 	 * @return The constructed progress listener.
 	 */
 	public static ProgressListener stream(PrintStream out){
-		return new ProgressListener(){
+		return new StreamListener(out);
+	}
+	
+	/**
+	 * Constructs a new progress listener that logs all
+	 * event to the given file.
+	 * @param logFile The name of the file to log to.
+	 * @return The constructed progress listener.
+	 * @throws IOException When an IOException occurs.
+	 */
+	public static ProgressListener file(String logFile) throws IOException{
+		return stream(new PrintStream(logFile, StandardCharsets.UTF_8));
+	}
+	
+	/**
+	 * Constructs a new progress listener that logs all
+	 * events to the given file and to Discord. Block updates
+	 * are not logged to Discord and intermediate updates
+	 * are not logged to the file and also printed to standard out.
+	 * @param logFile The name of the file to log to.
+	 * @param webhookUrl The Discord webhook to log to.
+	 * @return The constructed progress listener.
+	 * @throws IOException When an IOException occurs.
+	 */
+	public static ProgressListener discord(String logFile, String webhookUrl) throws IOException{
+		final WebhookClient webhook = new WebhookClientBuilder(webhookUrl).setWait(false).setDaemon(false).build();
+		webhook.send("==================================================\nLogging to: " + logFile + "\n==================================================");
+		return new StreamListener(new PrintStream(logFile, StandardCharsets.UTF_8)){
 			
 			@Override
-			public void partitionStart(int k){
-				out.println(System.currentTimeMillis() + " Partition start k=" + k);
+			protected void write(String msg){
+				if(msg.startsWith("Blocks ")){
+					super.write(msg);
+				}else{
+					super.write(msg);
+					webhook.send(msg);
+				}
 			}
 			
 			@Override
-			public void partitionEnd(int k){
-				out.println(System.currentTimeMillis() + " Partition end k=" + k);
-			}
-			
-			@Override
-			public void partitionCombinationStart(int k1, int k2){
-				out.println(System.currentTimeMillis() + " Partition combination start " + k1 + "x" + k2);
-			}
-			
-			@Override
-			public void partitionCombinationEnd(int k1, int k2){
-				out.println(System.currentTimeMillis() + " Partition combination end " + k1 + "x" + k2);
-			}
-			
-			@Override
-			public void computeBlocksStart(int k){
-				out.println(System.currentTimeMillis() + " Block start k=" + k);
-			}
-			
-			@Override
-			public void computeBlocksEnd(int k){
-				out.println(System.currentTimeMillis() + " Block end k=" + k);
-			}
-
-			@Override
-			public void coresStart(int k){
-				out.println(System.currentTimeMillis() + " Cores start k=" + k);
-			}
-			
-			@Override
-			public void coresBlocksDone(int done, int total){
-				out.println(System.currentTimeMillis() + " Blocks " + done + "/" + total);
-			}
-
-			@Override
-			public void coresEnd(int k){
-				out.println(System.currentTimeMillis() + " Cores end k=" + k);
-			}
-
-			@Override
-			public void mapStart(){
-				out.println(System.currentTimeMillis() + " Map start");
-			}
-
-			@Override
-			public void mapEnd(){
-				out.println(System.currentTimeMillis() + " Map end");
+			public void intermediateProgress(long total, int blockDone, int totalBlocks){
+				super.intermediateProgress(total, blockDone, totalBlocks);
+				webhook.send("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + ")");
 			}
 		};
+	}
+	
+	/**
+	 * Progress listener that logs to a print stream all events
+	 * except for intermediate updates, which are printed to standard out.
+	 * @author Roan
+	 */
+	public static class StreamListener implements ProgressListener{
+		/**
+		 * The stream to log to.
+		 */
+		private final PrintStream out;
+		
+		/**
+		 * Constructs a new progress listener that log to the given stream.
+		 * @param out The stream to log to.
+		 */
+		private StreamListener(PrintStream out){
+			this.out = out;
+		}
+		
+		/**
+		 * Writes a new message to the stream for this listener.
+		 * @param msg The message to write.
+		 */
+		protected void write(String msg){
+			out.println(System.currentTimeMillis() + " " + msg);
+		}
+		
+		@Override
+		public void partitionStart(int k){
+			write("Partition start k=" + k);
+		}
+		
+		@Override
+		public void partitionEnd(int k){
+			write("Partition end k=" + k);
+		}
+		
+		@Override
+		public void partitionCombinationStart(int k1, int k2){
+			write("Partition combination start " + k1 + "x" + k2);
+		}
+		
+		@Override
+		public void partitionCombinationEnd(int k1, int k2){
+			write("Partition combination end " + k1 + "x" + k2);
+		}
+		
+		@Override
+		public void computeBlocksStart(int k){
+			write("Block start k=" + k);
+		}
+		
+		@Override
+		public void computeBlocksEnd(int k){
+			write("Block end k=" + k);
+		}
+
+		@Override
+		public void coresStart(int k){
+			write("Cores start k=" + k);
+		}
+		
+		@Override
+		public void coresBlocksDone(int done, int total){
+			write("Blocks " + done + "/" + total);
+		}
+
+		@Override
+		public void coresEnd(int k){
+			write("Cores end k=" + k);
+		}
+
+		@Override
+		public void mapStart(){
+			write("Map start");
+		}
+
+		@Override
+		public void mapEnd(){
+			write("Map end");
+		}
+
+		@Override
+		public void intermediateProgress(long total, int blockDone, int totalBlocks){
+			System.out.println("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + ")");
+		}
 	}
 }

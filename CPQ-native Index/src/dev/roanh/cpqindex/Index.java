@@ -546,7 +546,7 @@ public class Index{
 							break;
 						}
 					}else{
-						System.out.println("Cores: " + getTotalCores());
+						progress.intermediateProgress(blocks.stream().mapToInt(b->b.canonCores.size()).summaryStatistics().getSum(), done.get(), total);
 					}
 				}finally{
 					lock.unlock();
