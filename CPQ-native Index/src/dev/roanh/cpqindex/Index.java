@@ -540,7 +540,7 @@ public class Index{
 			while(true){
 				try{
 					lock.lock();
-					if(cond.await(10, TimeUnit.SECONDS)){
+					if(cond.await(10, TimeUnit.MINUTES)){
 						int val = done.get();
 						progress.coresBlocksDone(val, total);
 						if(val == total){
@@ -548,7 +548,7 @@ public class Index{
 						}
 					}
 
-					if(lastUpdate < System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(10)){
+					if(lastUpdate < System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(10)){
 						progress.intermediateProgress(blocks.stream().mapToInt(b->b.canonCores.size()).summaryStatistics().getSum(), done.get(), total);
 						lastUpdate = System.currentTimeMillis();
 					}
