@@ -536,17 +536,21 @@ public class Index{
 				});
 			}
 			
+			long lastUpdate = 0;
 			while(true){
 				try{
 					lock.lock();
-					if(cond.await(10, TimeUnit.MINUTES)){
+					if(cond.await(10, TimeUnit.SECONDS)){
 						int val = done.get();
 						progress.coresBlocksDone(val, total);
 						if(val == total){
 							break;
 						}
-					}else{
+					}
+
+					if(lastUpdate < System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(10)){
 						progress.intermediateProgress(blocks.stream().mapToInt(b->b.canonCores.size()).summaryStatistics().getSum(), done.get(), total);
+						lastUpdate = System.currentTimeMillis();
 					}
 				}finally{
 					lock.unlock();
