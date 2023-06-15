@@ -2,6 +2,7 @@ package dev.roanh.cpqindex;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
@@ -222,7 +223,7 @@ public abstract interface ProgressListener{
 			@Override
 			public void intermediateProgress(long total, int blockDone, int totalBlocks){
 				super.intermediateProgress(total, blockDone, totalBlocks);
-				webhook.accept("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + ")");
+				webhook.accept("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + "), RAM: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) + ", threads: " + ManagementFactory.getThreadMXBean().getThreadCount());
 			}
 		};
 	}
@@ -311,7 +312,7 @@ public abstract interface ProgressListener{
 
 		@Override
 		public void intermediateProgress(long total, int blockDone, int totalBlocks){
-			System.out.println("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + "), RAM: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
+			System.out.println("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + "), RAM: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) + ", threads: " + ManagementFactory.getThreadMXBean().getThreadCount());
 		}
 	}
 }
