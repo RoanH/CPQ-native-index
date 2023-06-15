@@ -2,10 +2,16 @@ package dev.roanh.cpqindex;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpRequest.Builder;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
-
-import club.minnced.discord.webhook.WebhookClient;
-import club.minnced.discord.webhook.WebhookClientBuilder;
+import java.time.Duration;
+import java.util.function.Consumer;
 
 /**
  * Interface for index construction progress listeners.
@@ -180,10 +186,27 @@ public abstract interface ProgressListener{
 	 * @param webhookUrl The Discord webhook to log to.
 	 * @return The constructed progress listener.
 	 * @throws IOException When an IOException occurs.
+	 * @throws URISyntaxException When the URI is invalid.
 	 */
-	public static ProgressListener discord(String logFile, String webhookUrl) throws IOException{
-		final WebhookClient webhook = new WebhookClientBuilder(webhookUrl).setWait(false).setDaemon(false).build();
-		webhook.send("==================================================\nLogging to: " + logFile + "\n==================================================");
+	public static ProgressListener discord(String logFile, String webhookUrl) throws IOException, URISyntaxException{
+		HttpClient client = HttpClient.newHttpClient();
+		
+		URI webhookUri = new URI(webhookUrl);
+		Consumer<String> webhook = msg->{
+			Builder request = HttpRequest.newBuilder(webhookUri);
+			request = request.timeout(Duration.ofMinutes(10));
+			request = request.setHeader("Content-Type", "application/json");
+			request = request.header("wait", "true");
+			request = request.POST(BodyPublishers.ofString("{\"content\":\"" + msg + "\"}"));
+			
+			try{
+				client.send(request.build(), BodyHandlers.discarding());
+			}catch(IOException | InterruptedException e){
+				e.printStackTrace();
+			}
+		};
+		
+		webhook.accept("==================================================\\nLogging to: " + logFile + "\\n==================================================");
 		return new StreamListener(new PrintStream(logFile, StandardCharsets.UTF_8)){
 			
 			@Override
@@ -192,14 +215,14 @@ public abstract interface ProgressListener{
 					super.write(msg);
 				}else{
 					super.write(msg);
-					webhook.send(msg);
+					webhook.accept(msg);
 				}
 			}
 			
 			@Override
 			public void intermediateProgress(long total, int blockDone, int totalBlocks){
 				super.intermediateProgress(total, blockDone, totalBlocks);
-				webhook.send("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + ")");
+				webhook.accept("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + ")");
 			}
 		};
 	}
@@ -288,7 +311,7 @@ public abstract interface ProgressListener{
 
 		@Override
 		public void intermediateProgress(long total, int blockDone, int totalBlocks){
-			System.out.println("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + ")");
+			System.out.println("Cores: " + total + " (Block: " + blockDone + "/" + totalBlocks + "), RAM: " + (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 		}
 	}
 }

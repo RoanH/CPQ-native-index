@@ -5,6 +5,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URISyntaxException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -129,7 +130,7 @@ public class Main{
 				index.write(out, full);
 				System.out.println("Index succesfully saved to disk.");
 			}
-		}catch(IllegalArgumentException | InterruptedException | IOException e){
+		}catch(IllegalArgumentException | InterruptedException | IOException | URISyntaxException e){
 			e.printStackTrace();
 		}
 	}

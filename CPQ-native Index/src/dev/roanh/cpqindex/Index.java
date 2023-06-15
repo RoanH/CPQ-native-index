@@ -520,18 +520,24 @@ public class Index{
 			while(iter.hasPrevious()){
 				Block block = iter.previous();
 				executor.execute(()->{
-					block.computeCores();
-
-					if(done.incrementAndGet() == total){
-						lock.lock();
-					}else if(!lock.tryLock()){
-						return;
-					}
-
 					try{
-						cond.signal();
-					}finally{
-						lock.unlock();
+						block.computeCores();
+
+						if(done.incrementAndGet() == total){
+							lock.lock();
+						}else if(!lock.tryLock()){
+							return;
+						}
+
+						try{
+							cond.signal();
+						}finally{
+							lock.unlock();
+						}
+					}catch(Throwable t){
+						System.err.println("FATAL");
+						t.printStackTrace();
+						progress.intermediateProgress(-1, -1, -1);
 					}
 				});
 			}
