@@ -1018,49 +1018,53 @@ public class Index{
 			final int end = cores.size();
 			
 			//all intersections of cores (these are all distinct cores unless blackflow happens, so we cannot assume them to be cores)
-			QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
-			for(int i = 0; i < graphs.length; i++){
-				graphs[i] = cores.get(i).toQueryGraph();
-			}
-			
-			final int max = cores.size();
-			BitSet[] conflicts = new BitSet[max];
-			conflicts[0] = new BitSet(0);
-			for(int i = 1; i < max; i++){
-				QueryGraphCPQ a = graphs[i];
-				conflicts[i] = new BitSet(i);
-				for(int j = skip; j < i; j++){
-					//if CPQs are homomorphic they collapse on intersection
-					QueryGraphCPQ b = graphs[j];
-					if(a.isHomomorphicTo(b) || b.isHomomorphicTo(a)){
-						conflicts[i].set(j);
-					}
+			if(maxIntersections >= 2){
+				QueryGraphCPQ[] graphs = new QueryGraphCPQ[cores.size()];
+				for(int i = 0; i < graphs.length; i++){
+					graphs[i] = cores.get(i).toQueryGraph();
 				}
-			}
-			
-			List<CanonForm> held = new ArrayList<CanonForm>();
-			for(int i = skip; i < max; i++){
-				for(int j = 0; j < i; j++){
-					if(!conflicts[i].get(j)){
-						//this really only applies for k > 2, but any decrease in options is welcome
-						CPQ q = CPQ.intersect(cores.get(i), cores.get(j));
-						CanonForm canon = CanonForm.computeCanon(q, false);
-						held.add(canon);
-						if(canon.wasCore()){
-							if(isLoop()){
-								held.add(CanonForm.computeCanon(CPQ.intersect(q, CPQ.id()), false));
-							}
-						}else{
+
+				final int max = cores.size();
+				BitSet[] conflicts = new BitSet[max];
+				conflicts[0] = new BitSet(0);
+				for(int i = 1; i < max; i++){
+					QueryGraphCPQ a = graphs[i];
+					conflicts[i] = new BitSet(i);
+					for(int j = skip; j < i; j++){
+						//if CPQs are homomorphic they collapse on intersection
+						QueryGraphCPQ b = graphs[j];
+						if(a.isHomomorphicTo(b) || b.isHomomorphicTo(a)){
 							conflicts[i].set(j);
 						}
 					}
 				}
-			}
 			
-			computeIntersectionCores(cores, 0, skip, max, new ArrayList<CPQ>(), new BitSet(cores.size()), conflicts, noSave, isLoop());
-			
-			for(CanonForm form : held){
-				addCore(form, noSave);
+				List<CanonForm> held = new ArrayList<CanonForm>();
+				for(int i = skip; i < max; i++){
+					for(int j = 0; j < i; j++){
+						if(!conflicts[i].get(j)){
+							//this really only applies for k > 2, but any decrease in options is welcome
+							CPQ q = CPQ.intersect(cores.get(i), cores.get(j));
+							CanonForm canon = CanonForm.computeCanon(q, false);
+							held.add(canon);
+							if(canon.wasCore()){
+								if(isLoop()){
+									held.add(CanonForm.computeCanon(CPQ.intersect(q, CPQ.id()), false));
+								}
+							}else{
+								conflicts[i].set(j);
+							}
+						}
+					}
+				}
+				
+				if(maxIntersections >= 3){
+					computeIntersectionCores(cores, 0, skip, max, new ArrayList<CPQ>(), new BitSet(cores.size()), conflicts, noSave, isLoop());
+				}
+				
+				for(CanonForm form : held){
+					addCore(form, noSave);
+				}
 			}
 			
 			//intersect with identity if possible, these are not always cores and not always unique (note that intersections were already handled so they are skipped)
