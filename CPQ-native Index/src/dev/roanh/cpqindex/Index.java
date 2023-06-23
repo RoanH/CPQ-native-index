@@ -288,10 +288,15 @@ public class Index{
 			throw new IllegalArgumentException("Query diameter larger than index diameter.");
 		}
 		
+		if(cpq.getDiameter() == 0){
+			//we do not store the query of just identity, this could be optimised if required
+			return blocks.stream().filter(Block::isLoop).flatMap(b->b.getPaths().stream()).toList();
+		}
+		
 		return coreToBlock.getOrDefault(
 			CanonForm.computeCanon(cpq, false).toHashCanon(),
 			Collections.emptyList()
-		).stream().flatMap(b->b.getPaths().stream()).collect(Collectors.toList());
+		).stream().flatMap(b->b.getPaths().stream()).toList();
 	}
 	
 	/**
