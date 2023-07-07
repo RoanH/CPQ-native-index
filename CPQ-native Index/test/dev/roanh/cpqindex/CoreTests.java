@@ -62,6 +62,6 @@ public class CoreTests{
 		DoubleSummaryStatistics stats = new DoubleSummaryStatistics();
 		data.forEach(num->stats.accept(num.doubleValue()));
 		double diff = data.stream().mapToDouble(d->Math.pow(d.doubleValue() - stats.getAverage(), 2.0D)).sum();
-		System.out.println("min= " + stats.getMin() + " max= " + stats.getMax() + " avg= " + stats.getAverage() + " stddev=" + Math.sqrt(diff / stats.getCount()));
+		System.out.println("min= " + stats.getMin() + " max= " + stats.getMax() + " avg= " + stats.getAverage() + " stddev= " + Math.sqrt(diff / stats.getCount()));
 	}
 }
