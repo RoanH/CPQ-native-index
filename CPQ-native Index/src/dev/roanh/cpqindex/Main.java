@@ -201,7 +201,7 @@ public class Main{
 		options.addOption(Option.builder("l").longOpt("labels").desc("If passed then labels will be computed.").build());
 		options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("number").desc("The number of threads to use for core computation (1 by default).").build());
 		options.addOption(Option.builder("i").longOpt("intersections").hasArg().argName("max").desc("The maximum number of branches for intersection cores (unlimited by default).").build());
-		options.addOption(Option.builder("v").longOpt("verbose").hasArg().optionalArg(true).argName("file").desc("Turns on verbose logging of construction steps, optionally to a file.").build());
+		options.addOption(Option.builder("v").longOpt("verbose").hasArg().optionalArg(true).argName("file").desc("Turns on verbose logging of construction steps, optionally to a file or Discord.").build());
 		options.addOption(Option.builder("o").required().longOpt("output").hasArg().argName("file").desc("The file to save the constructed index to.").build());
 		options.addOption(Option.builder("f").longOpt("full").desc("If passed the saved index has all information required to compute cores later.").build());
 	}
