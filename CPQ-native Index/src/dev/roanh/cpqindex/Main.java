@@ -52,6 +52,10 @@ import dev.roanh.gmark.util.UniqueGraph;
  */
 public class Main{
 	/**
+	 * If set this Discord webhook can be used as a logging target.
+	 */
+	private static final String DISCORD_WEBHOOK = "";
+	/**
 	 * The command line options.
 	 */
 	public static final Options options;
@@ -112,7 +116,7 @@ public class Main{
 				if(logFile == null){
 					listener = ProgressListener.LOG;
 				}else if(logFile.startsWith("discord:")){
-					listener = ProgressListener.discord(logFile.substring(8), "https://discord.com/api/webhooks/1117760934782455868/r23OWBOCp6Z884gLpKysSfnBWscaYcdmVIErNfyi4W7rwu8Y5DqSLcUuNCwTy7hcz6aD");
+					listener = ProgressListener.discord(logFile.substring(8), DISCORD_WEBHOOK);
 				}else{
 					listener = ProgressListener.file(logFile);
 				}
