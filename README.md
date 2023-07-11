@@ -88,7 +88,7 @@ dependencies{
 </dependency>
 ```
 
-## Development of gMark
+## Development of the Index
 This repository contain an [Eclipse](https://www.eclipse.org/) & [Gradle](https://gradle.org/) project with [gMark](https://github.com/RoanH/gMark) and [Apache Commons CLI](https://commons.apache.org/proper/commons-cli/introduction.html) as the only dependencies. In addition, in order to compile the native library a C compiler and CMake are also required. Development work can be done using the Eclipse IDE or using any other Gradle compatible IDE. Unit testing is employed to test core functionality. Continuous integration is used to run checks on the source files, check for regressions using the unit tests, and to generate release publications.
 
 Compiling the native library can be done using the following command in the `CPQ-native Index` directory:
