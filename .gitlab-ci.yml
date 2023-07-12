@@ -15,28 +15,29 @@ stages:
   - test
   - status
   - javadoc
+  - publishing
 
 endings:
   allow_failure: true
   script: curl ${SERVER}ci/lf.sh | bash
   stage: check
 
-#pending:
-#  allow_failure: true
-#  script: curl ${SERVER}ci/pending.sh | bash
-#  stage: compile
+pending:
+  allow_failure: true
+  script: curl ${SERVER}ci/pending.sh | bash -s cpq-native-index
+  stage: compile
 
-#success:
-#  allow_failure: true
-#  script: curl ${SERVER}ci/success.sh | bash
-#  when: on_success
-#  stage: status
+success:
+  allow_failure: true
+  script: curl ${SERVER}ci/success.sh | bash -s cpq-native-index
+  when: on_success
+  stage: status
 
-#failure:
-#  allow_failure: true
-#  script: curl ${SERVER}ci/failure.sh | bash
-#  when: on_failure
-#  stage: status
+failure:
+  allow_failure: true
+  script: curl ${SERVER}ci/failure.sh | bash -s cpq-native-index
+  when: on_failure
+  stage: status
 
 spotbugs:
   allow_failure: true
@@ -49,7 +50,7 @@ spotbugs:
     expire_in: 1 week
     when: always
     paths:
-      - spotbugs.html
+      - CPQ-native\ Index/build/reports/spotbugs/main/spotbugs.html
 
 verify:
   allow_failure: true
@@ -79,11 +80,13 @@ natives:
     expire_in: 1 week
     paths:
       - ${PROJECTNAME}/lib/*nauty.*
-      
+
 compile:
   script:
     - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} shadowJar
+    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} createExe
     - mv ./build/libs/* ../
+    - mv ./build/launch4j/*.exe ../
   stage: compile
   needs: ["natives"]
   artifacts:
@@ -91,6 +94,22 @@ compile:
     expire_in: 1 week
     paths:
       - ${PROJECTNAME}-*.jar
+      - ${PROJECTNAME}-*.exe
+
+docker:
+  image: docker:latest
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script: []
+  script:
+    - docker info
+    - docker build -t cpq-native-index .
+  stage: compile
 
 test:
   script:
@@ -102,4 +121,35 @@ test:
     reports:
       junit: ./${PROJECTNAME}/build/test-results/test/TEST-*.xml
 
-#TODO docker?
+maven:
+  script:
+    - ./gradlew publishAllPublicationsToMavenRepository
+  only: 
+    - tags
+  when: manual
+  allow_failure: false
+  stage: publishing
+
+hub:
+  image: docker:latest
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script: []
+  needs: ["maven"]
+  script:
+    - docker info
+    - docker build -t cpq-native-index .
+    - docker tag cpq-native-index roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
+    - docker tag cpq-native-index roanh/cpq-native-index:latest
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker push roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
+    - docker push roanh/cpq-native-index:latest
+  stage: publishing
+  allow_failure: false
+  only:
+    - tags

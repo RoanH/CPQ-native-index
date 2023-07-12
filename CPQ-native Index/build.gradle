@@ -5,6 +5,9 @@ plugins{
 	id 'com.github.johnrengelman.shadow' version '7.1.2'
 	id 'com.github.spotbugs' version '5.0.14'
 	id 'jacoco'
+	id 'maven-publish'
+	id 'signing'
+	id 'edu.sc.seis.launch4j' version '2.5.1'
 }
 
 sourceSets{
@@ -46,9 +49,26 @@ spotbugsMain{
 	}
 }
 
+java{
+	withSourcesJar()
+	withJavadocJar()
+}
+
 eclipse.classpath.downloadJavadoc = true
 compileJava.options.encoding = 'UTF-8'
 sourceCompatibility = 1.17
+shadowJar.archiveName = 'Index-v' + project.version + '.jar'
+
+repositories{
+	//Local cache
+	if(project.hasProperty("nexusPublic")){
+		maven{
+			allowInsecureProtocol = true
+			url "$nexusPublic"
+		}
+	}
+	mavenCentral();
+}
 
 javadoc{
 	options.memberLevel = JavadocMemberLevel.PRIVATE
@@ -76,4 +96,75 @@ task compileNatives(type: Exec, group: "build", description: "Compile native lib
 
 application{
 	mainClassName = 'dev.roanh.cpqindex.Main'
+}
+
+publishing{
+	publications{
+		mavenJava(MavenPublication){
+			artifactId = 'cpq-native-index'
+			from components.java
+		
+			pom{
+				name = 'CPQ-native Index'
+				description = 'A graph database index with native support for CPQs.'
+				url = 'https://github.com/RoanH/CPQ-native-index'
+				licenses{
+					license{
+						name = 'GNU General Public License v3.0'
+						url = 'http://www.gnu.org/licenses/gpl-3.0.txt'
+					}
+				}
+				developers{
+					developer{
+						id = 'RoanH'
+						name = 'Roan Hofland'
+						email = 'roan@roanh.dev'
+					}
+				}
+				scm{
+					connection = 'scm:git:git@github.com:RoanH/CPQ-native-index.git'
+					developerConnection = 'scm:git:git@git.roanh.dev:roan/cpq-native-index.git'
+					url = 'https://github.com/RoanH/CPQ-native-index'
+				}
+			}
+		}
+	}
+	
+	repositories{
+		maven{
+			url "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+			credentials{
+				username findProperty("OSSRH_USER")
+				password findProperty("OSSRH_PASS")
+			}
+		}
+	}
+	
+	jar{
+		into("META-INF/maven/$project.group/$project.publishing.publications.mavenJava.artifactId"){
+			from{
+				generatePomFileForMavenJavaPublication
+			}
+			rename ".*", "pom.xml"
+		}
+	}
+}
+
+signing{
+	useInMemoryPgpKeys(findProperty("signingKeyId"), findProperty("signingKey"), findProperty("signingPassword"))
+	sign publishing.publications.mavenJava
+}
+
+launch4j{
+	jarTask = project.tasks.shadowJar
+	mainClassName = 'dev.roanh.cpqindex.Main'
+	jreMinVersion = project.sourceCompatibility
+	bundledJrePath = "%JAVA_HOME%"
+	outfile = project.name + '-v' + project.version + '.exe'
+	fileDescription = project.name
+	version = project.version
+	textVersion = project.version
+	copyright = "Roan Hofland"
+	headerType = "console"
+	stayAlive = true
 }
