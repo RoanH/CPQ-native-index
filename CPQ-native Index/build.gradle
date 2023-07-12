@@ -98,6 +98,9 @@ application{
 	mainClassName = 'dev.roanh.cpqindex.Main'
 }
 
+group = 'dev.roanh.cpqnativeindex'
+version = '1.0'//Main.java
+
 publishing{
 	publications{
 		mavenJava(MavenPublication){

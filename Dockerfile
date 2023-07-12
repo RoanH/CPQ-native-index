@@ -16,6 +16,6 @@ RUN ./gradlew :shadowJar
 FROM eclipse-temurin:17
 LABEL maintainer="roan@roanh.dev"
 WORKDIR /CPQ-native\ Index
-COPY --from=compile /Index/build/libs/Index.jar ./Index.jar
+COPY --from=compile /Index/build/libs/Index-v1.0.jar ./Index.jar
 COPY --from=compile /Index/lib/libnauty.so ./lib/libnauty.so
 ENTRYPOINT ["java", "-jar", "Index.jar"]
