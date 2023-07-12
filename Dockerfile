@@ -7,11 +7,10 @@ ADD ["CPQ-native Index/src/", "/Index/src/"]
 ADD ["CPQ-native Index/build.gradle", "/Index/"]
 ADD ["CPQ-native Index/gradlew", "/Index/"]
 ADD ["CPQ-native Index/settings.gradle", "/Index/"]
+ADD ["CPQ-native Index/native/", "/Index/native/"]
 RUN chmod -R 755 ./
 RUN apt-get update && apt-get -y install gcc cmake
-WORKDIR /Index/native
-RUN ./build.sh
-WORKDIR /Index
+RUN ./gradlew :compileNatives
 RUN ./gradlew :shadowJar
 
 FROM eclipse-temurin:17
