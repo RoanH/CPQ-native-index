@@ -2,12 +2,11 @@
 FROM eclipse-temurin:17 AS compile
 LABEL maintainer="roan@roanh.dev"
 WORKDIR /Index
-ADD ["CPQ-native Index/gradle/wrapper/", "/gradle/wrapper/"]
-ADD ["CPQ-native Index/src/", "/src/"]
-ADD ["CPQ-native Index/build.gradle", "/"]
-ADD ["CPQ-native Index/gradlew", "/"]
-ADD ["CPQ-native Index/settings.gradle", "/"]
-RUN ls -l
+ADD ["CPQ-native Index/gradle/wrapper/", "/Index/gradle/wrapper/"]
+ADD ["CPQ-native Index/src/", "/Index/src/"]
+ADD ["CPQ-native Index/build.gradle", "/Index/"]
+ADD ["CPQ-native Index/gradlew", "/Index/"]
+ADD ["CPQ-native Index/settings.gradle", "/Index/"]
 RUN chmod -R 755 ./
 RUN apt-get update && apt-get -y install gcc cmake
 RUN ./gradlew :compileNatives
