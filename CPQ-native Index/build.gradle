@@ -3,26 +3,18 @@ plugins{
 	id 'eclipse'
 	id 'application'
 	id 'com.github.johnrengelman.shadow' version '7.1.2'
-	id 'com.github.spotbugs' version '5.0.13'
+	id 'com.github.spotbugs' version '5.0.14'
 	id 'jacoco'
 }
 
 sourceSets{
 	main{
-		java{
-			srcDirs = ['src']
-		}
-		resources{
-			srcDirs = ['src', 'lib']
-		}
+		java.srcDirs = ['src']
+		resources.srcDirs = ['lib']
 	}
 	test{
-		java{
-			srcDirs = ['test']
-		}
-		resources{
-			srcDirs = ['test']
-		}
+		java.srcDirs = ['test']
+		resources.srcDirs = ['test']
 	}
 }
 

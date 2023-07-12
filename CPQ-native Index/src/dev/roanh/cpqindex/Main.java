@@ -24,12 +24,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Locale;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -52,6 +52,10 @@ import dev.roanh.gmark.util.UniqueGraph;
  */
 public class Main{
 	/**
+	 * The current version of the index software.
+	 */
+	public static final String VERSION = "v1.0";//build.gradle
+	/**
 	 * If set this Discord webhook can be used as a logging target.
 	 */
 	private static final String DISCORD_WEBHOOK = "";
@@ -65,6 +69,8 @@ public class Main{
 	 * @param args The passed CLI options.
 	 */
 	public static void main(String[] args){
+		System.out.println("Running CPQ-native Index version " + VERSION.substring(1));
+		
 		//initialise native bindings
 		try{
 			loadNatives();
@@ -181,15 +187,21 @@ public class Main{
 	 * @throws UnsatisfiedLinkError When loading a native library fails.
 	 */
 	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
-		try(DirectoryStream<Path> libs = Files.newDirectoryStream(Paths.get("lib"), Files::isRegularFile)){
-			for(Path lib : libs){
-				Path name = lib.getFileName();
-				if(name != null && !name.toString().endsWith(".jar")){
-					System.out.println("Loading native library: " + name);
-					System.load(lib.toAbsolutePath().toString());
+		String libName = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows") ? "libnauty.dll" : "libnauty.so";
+		Path lib = Paths.get("lib").resolve(libName);
+		
+		if(Files.notExists(lib)){
+			Files.createDirectories(lib.getParent());
+			try(InputStream in = ClassLoader.getSystemResourceAsStream(libName)){
+				try(OutputStream out = Files.newOutputStream(lib)){
+					in.transferTo(out);
+					out.flush();
 				}
 			}
 		}
+
+		System.out.println("Loading native library: " + libName);
+		System.load(lib.toAbsolutePath().toString());
 	}
 	
 	static{
