@@ -10,6 +10,9 @@ plugins{
 	id 'edu.sc.seis.launch4j' version '2.5.1'
 }
 
+group = 'dev.roanh.cpqnativeindex'
+version = '1.0'//Main.java
+
 sourceSets{
 	main{
 		java.srcDirs = ['src']
@@ -97,9 +100,6 @@ task compileNatives(type: Exec, group: "build", description: "Compile native lib
 application{
 	mainClassName = 'dev.roanh.cpqindex.Main'
 }
-
-group = 'dev.roanh.cpqnativeindex'
-version = '1.0'//Main.java
 
 publishing{
 	publications{
