@@ -90,7 +90,7 @@ task compileNatives(type: Exec, group: "build", description: "Compile native lib
 	if(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')){
 		commandLine 'cmd', '/c', 'build.bat'
     }else{
-		commandLine '/bin/sh', '-c', './build.sh'
+		commandLine 'sh', '-c', './build.sh'
 	}
 }
 
