@@ -93,8 +93,8 @@ compile:
     name: "${NAME}"
     expire_in: 1 week
     paths:
-      - ${PROJECTNAME}-*.jar
-      - ${PROJECTNAME}-*.exe
+      - Index-*.jar
+      - Index-*.exe
 
 docker:
   image: docker:latest
