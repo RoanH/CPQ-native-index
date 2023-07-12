@@ -39,7 +39,7 @@ The `-Xmx` argument is passed to Java and controls the maximum amount of RAM tha
 java -Xmx1900G -jar Index.jar -d base_index.idx -k 2 -c -t 64 -v discord:log.txt -o index.idx
 ```
 
-Note that `discord:` can be prepended to the log file argument, which will send computation progress updates to the webhook configured in the `DISCORD\_WEBHOOK` variable in the `Main` class of the program. By default no webhook is configured, so configuring this requires compiling from source.
+Note that `discord:` can be prepended to the log file argument, which will send computation progress updates to the webhook configured in the `DISCORD\_WEBHOOK` variable in the `Main` class of the program. By default no webhook is configured, so configuring this requires compiling from source. For testing, the robots dataset is available in the [CPQ-aware Index repository](https://github.com/yuya-s/CPQ-aware-index/blob/main/data/robots.edge).
 
 ### Executable Download
 The \CPQ-native Index is available as a standalone portable executable with a command line interface. This version of the index requires Java 17 or higher to run. Note that the Windows executable release does not offer the same degree of control over the heap size as the Java archive version.
