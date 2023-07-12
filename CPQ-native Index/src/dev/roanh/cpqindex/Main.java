@@ -188,10 +188,11 @@ public class Main{
 	 */
 	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
 		String libName = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows") ? "libnauty.dll" : "libnauty.so";
-		Path lib = Paths.get("lib").resolve(libName);
+		Path dir = Paths.get("lib");
+		Path lib = dir.resolve(libName);
 		
 		if(Files.notExists(lib)){
-			Files.createDirectories(lib.getParent());
+			Files.createDirectories(dir);
 			try(InputStream in = ClassLoader.getSystemResourceAsStream(libName)){
 				try(OutputStream out = Files.newOutputStream(lib)){
 					in.transferTo(out);
