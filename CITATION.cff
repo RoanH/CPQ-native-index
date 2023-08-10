@@ -19,15 +19,15 @@ abstract: "A graph database index with native support for CPQs"
 license: GPL-3.0-or-later
 year-original: 2023
 references:
-  - title: "Subquery Evaluation Using a CPQ-native Index"
+  - title: "Indexing Conjunctive Path Queries for Accelerated Query Evaluation"
     authors:
     - given-names: Roan
       family-names: Hofland
       affiliation: "Osaka University and Eindhoven University of Technology"
       email: roan@roanh.dev
     type: thesis
-    url: 'https://research.roanh.dev/ soon'
-    date-published: 2023-07-18
+    url: 'https://research.roanh.dev/Indexing%20Conjunctive%20Path%20Queries%20for%20Accelerated%20Query%20Evaluation.pdf'
+    date-published: 2023-08-02
     department: "Graduate School of Information Science and Technology and Department of Mathematics and Computer Science"
     institution:
       name: "Osaka University and Eindhoven University of Technology"
