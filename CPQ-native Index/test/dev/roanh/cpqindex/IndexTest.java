@@ -26,6 +26,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -37,10 +38,11 @@ import org.junit.jupiter.api.Test;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.cpqindex.Index.Block;
-import dev.roanh.gmark.conjunct.cpq.CPQ;
-import dev.roanh.gmark.conjunct.cpq.GeneratorCPQ;
-import dev.roanh.gmark.core.graph.Predicate;
-import dev.roanh.gmark.util.UniqueGraph;
+import dev.roanh.gmark.lang.QueryLanguageSyntax;
+import dev.roanh.gmark.lang.cpq.CPQ;
+import dev.roanh.gmark.lang.cpq.ParserCPQ;
+import dev.roanh.gmark.type.schema.Predicate;
+import dev.roanh.gmark.util.graph.generic.UniqueGraph;
 
 public class IndexTest{
 	private static Map<String, Predicate> symbols = new HashMap<String, Predicate>();
@@ -654,7 +656,7 @@ public class IndexTest{
 	private void checkCores(Block block, String... expected){
 		assertEquals(expected.length, block.getCanonCores().size(), "found: " + block.getCores());
 		for(String cpq : expected){
-			CoreHash canon = CanonForm.computeCanon(GeneratorCPQ.parse(cpq, symbols, CPQ.CHAR_JOIN, CPQ.CHAR_CAP, Predicate.CHAR_INVERSE), false).toHashCanon();
+			CoreHash canon = CanonForm.computeCanon(CPQ.parse(cpq, new ArrayList<>(symbols.values())), false).toHashCanon();
 			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);
 		}
 	}

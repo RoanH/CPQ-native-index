@@ -24,7 +24,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import dev.roanh.cpqindex.Index.Block;
-import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.type.schema.Predicate;
 
 /**
  * Represents a path through the graph identified by

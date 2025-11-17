@@ -32,11 +32,11 @@ import java.util.Map.Entry;
 import java.util.Objects;
 
 import dev.roanh.cpqindex.Nauty.ColoredGraph;
-import dev.roanh.gmark.conjunct.cpq.CPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Edge;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
-import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.lang.cpq.CPQ;
+import dev.roanh.gmark.lang.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.lang.cpq.QueryGraphCPQ.Edge;
+import dev.roanh.gmark.lang.cpq.QueryGraphCPQ.Vertex;
+import dev.roanh.gmark.type.schema.Predicate;
 
 /**
  * Utility class to compute and represent the canonical form of a CPQ.
