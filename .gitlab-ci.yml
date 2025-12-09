@@ -1,13 +1,14 @@
-image: eclipse-temurin:17
+image: eclipse-temurin:21
 
 variables:
-  NAME: "${CI_PROJECT_NAME}-${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}"
-  PROJECTNAME: "CPQ-native Index"
+  SUFFIX: ${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}
+  PROJECTNAME: CPQ-native Index
 
 before_script:
   - java -version
-  - cd CPQ-native\ Index
+  - cd ${PROJECTNAME}
   - ls -l
+  - chmod -R 755 ./*
 
 stages:
   - check
@@ -22,35 +23,43 @@ endings:
   script: curl ${SERVER}ci/lf.sh | bash
   stage: check
 
+sonar:
+  allow_failure: true
+  script:
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} assemble
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} test jacocoTestReport
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} sonar
+  stage: check
+  only:
+    - master
+
+spotbugs:
+  allow_failure: true
+  script: ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} spotbugsMain
+  stage: check
+  artifacts:
+    name: SpotBugs-${SUFFIX}
+    expire_in: 1 day
+    when: always
+    paths:
+      - ./${PROJECTNAME}/build/reports/spotbugs/main/spotbugs.html
+
 pending:
   allow_failure: true
-  script: curl ${SERVER}ci/pending.sh | bash -s cpq-native-index
+  script: curl ${SERVER}ci/pending.sh | bash
   stage: compile
 
 success:
   allow_failure: true
-  script: curl ${SERVER}ci/success.sh | bash -s cpq-native-index
+  script: curl ${SERVER}ci/success.sh | bash
   when: on_success
   stage: status
 
 failure:
   allow_failure: true
-  script: curl ${SERVER}ci/failure.sh | bash -s cpq-native-index
+  script: curl ${SERVER}ci/failure.sh | bash
   when: on_failure
   stage: status
-
-spotbugs:
-  allow_failure: true
-  script:
-    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :spotbugsMain
-    - mv ./build/reports/spotbugs/main/spotbugs.html ../spotbugs.html
-  stage: check
-  artifacts:
-    name: "SpotBugs Report"
-    expire_in: 1 week
-    when: always
-    paths:
-      - CPQ-native\ Index/build/reports/spotbugs/main/spotbugs.html
 
 verify:
   allow_failure: true
@@ -60,60 +69,32 @@ verify:
 
 javadoc:
   script:
-    - mkdir ../javadoc
-    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :javadoc
-    - mv ./build/docs/javadoc/* ../javadoc/
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} javadoc
+    - mv ./build/docs/javadoc ../
   stage: javadoc
   artifacts:
-    name: "${NAME} [Javadoc]"
-    expire_in: 1 week
+    name: Javadoc-${SUFFIX}
+    expire_in: 1 day
     paths:
       - javadoc/
 
-natives:
-  script:
-    - apt-get update && apt-get -y install gcc cmake
-    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} compileNatives
-  stage: compile
-  artifacts:
-    name: "Nauty Native Library"
-    expire_in: 1 week
-    paths:
-      - ${PROJECTNAME}/lib/*nauty.*
-
 compile:
   script:
-    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} shadowJar
-    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} createExe
-    - mv ./build/libs/* ../
-    - mv ./build/launch4j/*.exe ../
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :shadowJar
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :createExe
+    - mv ./build/libs/* ..
+    - mv ./build/launch4j/*.exe ..
   stage: compile
-  needs: ["natives"]
   artifacts:
-    name: "${NAME}"
-    expire_in: 1 week
+    name: CPQ-native Index-${SUFFIX}
+    expire_in: 1 day
     paths:
-      - Index-*.jar
-      - Index-*.exe
-
-docker:
-  image: docker:latest
-  variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
-  tags:
-    - docker
-  services:
-    - docker:dind
-  before_script: []
-  script:
-    - docker info
-    - docker build -t cpq-native-index .
-  stage: compile
+      - CPQ-native Index-*.jar
+      - CPQ-native Index-*.exe
 
 test:
   script:
-    - ./gradlew -PnexusPublic=${NEXUS_PUBLIC} :test :jacocoTestReport
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :test :jacocoTestReport
     - cat ./build/reports/jacoco/test/html/index.html
   stage: test
   coverage: '/Total.*?([0-9]{1,3})%/'
@@ -121,35 +102,10 @@ test:
     reports:
       junit: ./${PROJECTNAME}/build/test-results/test/TEST-*.xml
 
-maven:
-  script:
-    - ./gradlew publishAllPublicationsToMavenRepository
-  only: 
-    - tags
+publish:
+  allow_failure: false
+  script: ./gradlew -PrefName=${CI_COMMIT_REF_NAME} publishAllPublicationsToMavenRepository
   when: manual
-  allow_failure: false
   stage: publishing
-
-hub:
-  image: docker:latest
-  variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
-  tags:
-    - docker
-  services:
-    - docker:dind
-  before_script: []
-  needs: ["maven"]
-  script:
-    - docker info
-    - docker build -t cpq-native-index .
-    - docker tag cpq-native-index roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
-    - docker tag cpq-native-index roanh/cpq-native-index:latest
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
-    - docker push roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
-    - docker push roanh/cpq-native-index:latest
-  stage: publishing
-  allow_failure: false
   only:
     - tags
