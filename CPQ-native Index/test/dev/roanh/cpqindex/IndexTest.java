@@ -45,23 +45,22 @@ import dev.roanh.gmark.type.schema.Predicate;
 import dev.roanh.gmark.util.graph.generic.UniqueGraph;
 
 public class IndexTest{
-	private static Map<String, Predicate> symbols = new HashMap<String, Predicate>();
+	private static List<Predicate> symbols = List.of(
+		new Predicate(0, "0"),
+		new Predicate(1, "1"),
+		new Predicate(2, "2"),
+		new Predicate(3, "3")
+	);
 	private static UniqueGraph<Integer, Predicate> testGraph;
 	
 	static{
-		symbols.put("0", new Predicate(0, "0"));
-		symbols.put("1", new Predicate(1, "1"));
-		symbols.put("2", new Predicate(2, "2"));
-		symbols.put("3", new Predicate(3, "3"));
-		
 		testGraph = new UniqueGraph<Integer, Predicate>();
 		testGraph.addUniqueNode(0);
 		testGraph.addUniqueNode(1);
 		testGraph.addUniqueNode(2);
-
-		testGraph.addUniqueEdge(0, 1, symbols.get("0"));
-		testGraph.addUniqueEdge(0, 2, symbols.get("0"));
-		testGraph.addUniqueEdge(1, 2, symbols.get("1"));
+		testGraph.addUniqueEdge(0, 1, symbols.get(0));
+		testGraph.addUniqueEdge(0, 2, symbols.get(0));
+		testGraph.addUniqueEdge(1, 2, symbols.get(1));
 		
 		try{
 			Main.loadNatives();
@@ -89,7 +88,7 @@ public class IndexTest{
 			assertIterableEquals(a.get(i).getCanonCores(), b.get(i).getCanonCores());
 		}
 		
-		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		CPQ q = CPQ.labels(symbols.get(0), symbols.get(0));
 		assertIterableEquals(read.query(q), other.query(q));
 	}
 	
@@ -112,7 +111,7 @@ public class IndexTest{
 			assertIterableEquals(a.get(i).getLabels(), b.get(i).getLabels());
 		}
 		
-		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		CPQ q = CPQ.labels(symbols.get(0), symbols.get(0));
 		assertIterableEquals(index.query(q), read.query(q));
 	}
 	
@@ -133,7 +132,7 @@ public class IndexTest{
 			assertIterableEquals(a.get(i).getLabels(), b.get(i).getLabels());
 		}
 		
-		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		CPQ q = CPQ.labels(symbols.get(0), symbols.get(0));
 		assertIterableEquals(index.query(q), read.query(q));
 	}
 	
@@ -152,7 +151,7 @@ public class IndexTest{
 			assertIterableEquals(a.get(i).getPaths(), b.get(i).getPaths());
 		}
 		
-		CPQ q = CPQ.labels(symbols.get("0"), symbols.get("0"));
+		CPQ q = CPQ.labels(symbols.get(0), symbols.get(0));
 		assertIterableEquals(index.query(q), read.query(q));
 	}
 	
@@ -656,7 +655,7 @@ public class IndexTest{
 	private void checkCores(Block block, String... expected){
 		assertEquals(expected.length, block.getCanonCores().size(), "found: " + block.getCores());
 		for(String cpq : expected){
-			CoreHash canon = CanonForm.computeCanon(CPQ.parse(cpq, new ArrayList<>(symbols.values())), false).toHashCanon();
+			CoreHash canon = CanonForm.computeCanon(CPQ.parse(cpq, symbols), false).toHashCanon();
 			assertTrue(block.getCanonCores().contains(canon), "real: " + block.getCores() + " / " + canon + " | " + block.getCanonCores() + " | " + cpq);
 		}
 	}
