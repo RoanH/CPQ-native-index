@@ -45,12 +45,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
-import dev.roanh.gmark.conjunct.cpq.CPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
-import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.lang.cpq.CPQ;
+import dev.roanh.gmark.lang.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.type.schema.Predicate;
 import dev.roanh.gmark.util.RangeList;
-import dev.roanh.gmark.util.UniqueGraph;
-import dev.roanh.gmark.util.UniqueGraph.GraphEdge;
+import dev.roanh.gmark.util.graph.generic.UniqueGraph;
+import dev.roanh.gmark.util.graph.generic.UniqueGraph.GraphEdge;
 
 /**
  * Implementation of a graph database index based on k-path-bisimulation

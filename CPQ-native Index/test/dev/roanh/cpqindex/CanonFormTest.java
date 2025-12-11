@@ -25,8 +25,8 @@ import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
 
-import dev.roanh.gmark.conjunct.cpq.CPQ;
-import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.lang.cpq.CPQ;
+import dev.roanh.gmark.type.schema.Predicate;
 
 public class CanonFormTest{
 	

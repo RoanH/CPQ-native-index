@@ -39,12 +39,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import dev.roanh.gmark.conjunct.cpq.CPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ;
-import dev.roanh.gmark.conjunct.cpq.QueryGraphCPQ.Vertex;
-import dev.roanh.gmark.core.graph.Predicate;
-import dev.roanh.gmark.util.GraphPanel;
-import dev.roanh.gmark.util.UniqueGraph;
+import dev.roanh.gmark.lang.cpq.CPQ;
+import dev.roanh.gmark.lang.cpq.QueryGraphCPQ;
+import dev.roanh.gmark.lang.cpq.QueryGraphCPQ.Vertex;
+import dev.roanh.gmark.type.schema.Predicate;
+import dev.roanh.gmark.util.graph.GraphPanel;
+import dev.roanh.gmark.util.graph.generic.UniqueGraph;
 
 /**
  * Main class and CLI interface for the index.
