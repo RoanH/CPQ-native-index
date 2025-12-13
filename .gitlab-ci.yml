@@ -81,19 +81,18 @@ javadoc:
 docker:
   image: docker:latest
   variables:
-DOCKER_DRIVER: overlay2
-DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
   tags:
     - docker
   services:
     - docker:dind
-  before_script:
-    - docker info
-    - docker build -t cpq-native-index .
+  before_script: []
   script:
     - docker info
     - docker build -t cpq-native-index .
   stage: compile
+
 natives:
   script:
     - apt-get update && apt-get -y install gcc cmake
@@ -142,20 +141,13 @@ publish:
 hub:
   image: docker:latest
   variables:
-DOCKER_DRIVER: overlay2
-DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
   tags:
     - docker
   services:
     - docker:dind
-  before_script:
-    - docker info
-    - docker build --build-arg version=${CI_COMMIT_REF_NAME:1} -t cpq-native-index .
-    - docker tag cpq-native-index roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
-    - docker tag cpq-native-index roanh/cpq-native-index:latest
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
-    - docker push roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
-    - docker push roanh/cpq-native-index:latest
+  before_script: []
   script:
     - docker info
     - docker build --build-arg version=${CI_COMMIT_REF_NAME:1} -t cpq-native-index .
