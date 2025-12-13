@@ -6,7 +6,7 @@ variables:
 
 before_script:
   - java -version
-  - cd ${PROJECTNAME}
+  - cd "${PROJECTNAME}"
   - ls -l
   - chmod -R 755 ./*
 
@@ -78,6 +78,33 @@ javadoc:
     paths:
       - javadoc/
 
+docker:
+  image: docker:latest
+  variables:
+DOCKER_DRIVER: overlay2
+DOCKER_TLS_CERTDIR: ""
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+    - docker build -t cpq-native-index .
+  script:
+    - docker info
+    - docker build -t cpq-native-index .
+  stage: compile
+natives:
+  script:
+    - apt-get update && apt-get -y install gcc cmake
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} compileNatives
+  stage: compile
+  artifacts:
+    name: Nauty Native Library
+    expire_in: 1 day
+    paths:
+      - ${PROJECTNAME}/lib/*nauty.*
+
 compile:
   script:
     - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :shadowJar
@@ -85,12 +112,14 @@ compile:
     - mv ./build/libs/* ..
     - mv ./build/launch4j/*.exe ..
   stage: compile
+  needs:
+    - natives
   artifacts:
     name: CPQ-native Index-${SUFFIX}
     expire_in: 1 day
     paths:
-      - CPQ-native Index-*.jar
-      - CPQ-native Index-*.exe
+      - Index-*.jar
+      - Index-*.exe
 
 test:
   script:
@@ -107,5 +136,36 @@ publish:
   script: ./gradlew -PrefName=${CI_COMMIT_REF_NAME} publishAllPublicationsToMavenRepository
   when: manual
   stage: publishing
+  only:
+    - tags
+
+hub:
+  image: docker:latest
+  variables:
+DOCKER_DRIVER: overlay2
+DOCKER_TLS_CERTDIR: ""
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+    - docker build --build-arg version=${CI_COMMIT_REF_NAME:1} -t cpq-native-index .
+    - docker tag cpq-native-index roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
+    - docker tag cpq-native-index roanh/cpq-native-index:latest
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker push roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
+    - docker push roanh/cpq-native-index:latest
+  script:
+    - docker info
+    - docker build --build-arg version=${CI_COMMIT_REF_NAME:1} -t cpq-native-index .
+    - docker tag cpq-native-index roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
+    - docker tag cpq-native-index roanh/cpq-native-index:latest
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+    - docker push roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
+    - docker push roanh/cpq-native-index:latest
+  stage: publishing
+  needs:
+    - publish
   only:
     - tags
