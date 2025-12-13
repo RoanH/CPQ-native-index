@@ -14,7 +14,10 @@ import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 
 sourceSets{
-	main.java.srcDirs = ['']
+	main{
+		java.srcDirs = ['src']
+		resources.srcDirs = ['lib']
+	}
 
 	test{
 		java.srcDirs = ['test']
