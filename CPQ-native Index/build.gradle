@@ -16,7 +16,7 @@ import com.github.spotbugs.snom.Effort
 sourceSets{
 	main{
 		java.srcDirs = ['src']
-		resources.srcDirs = ['resources']
+		resources.srcDirs = ['lib']
 	}
 
 	test{
@@ -58,9 +58,9 @@ javadoc.options.memberLevel = JavadocMemberLevel.PRIVATE
 javadoc.options.encoding = 'UTF-8'
 group = 'dev.roanh.cpqnativeindex'
 ext.artifact = 'cpq-native-index'
-shadowJar.archiveBaseName = 'CPQ-native Index'
 shadowJar.archiveVersion = 'v' + version
 shadowJar.archiveClassifier = ''
+shadowJar.archiveBaseName = 'Index'
 application.mainClass = 'dev.roanh.cpqindex.Main'
 
 test{
@@ -97,6 +97,15 @@ tasks.withType(com.github.spotbugs.snom.SpotBugsTask){
 	}
 }
 
+task compileNatives(type: Exec, group: "build", description: "Compile native libraries for the project."){
+	workingDir "$projectDir/native"
+	if(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')){
+		commandLine 'cmd', '/c', 'build.bat'
+	}else{
+		commandLine 'sh', '-c', './build.sh'
+	}
+}
+
 java{
 	withSourcesJar()
 	withJavadocJar()
@@ -111,7 +120,7 @@ publishing{
 			pom{
 				name = project.eclipse.project.name
 				description = 'A graph database index with native support for CPQs.'
-				url = 'https://github.com/RoanH/CPQ-native Index'
+				url = 'https://github.com/RoanH/CPQ-native-index'
 				licenses{
 					license{
 						name = 'GNU General Public License v3.0'
@@ -126,9 +135,9 @@ publishing{
 					}
 				}
 				scm{
-					connection = 'scm:git:git@github.com:RoanH/CPQ-native Index.git'
+					connection = 'scm:git:git@github.com:RoanH/CPQ-native-index.git'
 					developerConnection = 'scm:git:git@git.roanh.dev:TUe/2imc00/cpq-native-index.git'
-					url = 'https://github.com/RoanH/CPQ-native Index'
+					url = 'https://github.com/RoanH/CPQ-native-index'
 				}
 			}
 		}
@@ -165,7 +174,7 @@ launch4j{
 	mainClassName = application.mainClass
 	jreMinVersion = project.sourceCompatibility.toString()
 	bundledJrePath = "%JAVA_HOME%"
-	outfile = 'CPQ-native Index-v' + project.version + '.exe'
+	outfile = 'Index-v' + project.version + '.exe'
 	fileDescription = "CPQ-native Index"
 	productName = rootProject.name
 	version = project.version
