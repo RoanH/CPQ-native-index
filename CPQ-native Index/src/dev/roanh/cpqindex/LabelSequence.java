@@ -23,7 +23,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.type.schema.Predicate;
 import dev.roanh.gmark.util.RangeList;
 
 /**

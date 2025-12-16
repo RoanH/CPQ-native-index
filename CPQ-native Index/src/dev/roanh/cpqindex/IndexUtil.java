@@ -27,9 +27,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import dev.roanh.gmark.core.graph.Predicate;
-import dev.roanh.gmark.util.UniqueGraph;
-import dev.roanh.gmark.util.UniqueGraph.GraphNode;
+import dev.roanh.gmark.type.schema.Predicate;
+import dev.roanh.gmark.util.graph.generic.UniqueGraph;
+import dev.roanh.gmark.util.graph.generic.UniqueGraph.GraphNode;
 import dev.roanh.gmark.util.Util;
 
 /**

@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
-import dev.roanh.gmark.core.graph.Predicate;
+import dev.roanh.gmark.type.schema.Predicate;
 
 /**
  * This class provides and interface to the native binding for nauty.
