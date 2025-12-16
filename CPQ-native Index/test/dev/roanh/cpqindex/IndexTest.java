@@ -26,11 +26,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
@@ -38,26 +35,25 @@ import org.junit.jupiter.api.Test;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.cpqindex.Index.Block;
-import dev.roanh.gmark.lang.QueryLanguageSyntax;
 import dev.roanh.gmark.lang.cpq.CPQ;
-import dev.roanh.gmark.lang.cpq.ParserCPQ;
 import dev.roanh.gmark.type.schema.Predicate;
 import dev.roanh.gmark.util.graph.generic.UniqueGraph;
 
 public class IndexTest{
+	private static UniqueGraph<Integer, Predicate> testGraph;
 	private static List<Predicate> symbols = List.of(
 		new Predicate(0, "0"),
 		new Predicate(1, "1"),
 		new Predicate(2, "2"),
 		new Predicate(3, "3")
 	);
-	private static UniqueGraph<Integer, Predicate> testGraph;
 	
 	static{
 		testGraph = new UniqueGraph<Integer, Predicate>();
 		testGraph.addUniqueNode(0);
 		testGraph.addUniqueNode(1);
 		testGraph.addUniqueNode(2);
+		
 		testGraph.addUniqueEdge(0, 1, symbols.get(0));
 		testGraph.addUniqueEdge(0, 2, symbols.get(0));
 		testGraph.addUniqueEdge(1, 2, symbols.get(1));
