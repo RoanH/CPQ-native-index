@@ -245,6 +245,15 @@ public class Index{
 		
 		maxIntersections = intersections;
 	}
+
+	/**
+	 * Gets the maximum number of same level CPQ intersections allowed.
+	 * Note that this limit does not count intersection with identity.
+	 * @return The maximum number of CPQs in an intersection.
+	 */
+	public final int getIntersections(){
+		return maxIntersections;
+	}
 	
 	/**
 	 * Write this index to the given output stream.
