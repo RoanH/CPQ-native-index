@@ -327,6 +327,14 @@ public class Index{
 	}
 	
 	/**
+	 * Gets the diameter for this index.
+	 * @return The value of k for this index.
+	 */
+	public final int getK(){
+		return k;
+	}
+	
+	/**
 	 * Gets all the blocks in this index.
 	 * @return All the blocks in this index.
 	 */
