@@ -316,6 +316,33 @@ public class Index{
 			Collections.emptyList()
 		).stream().flatMap(b->b.getPaths().stream()).toList();
 	}
+
+	/**
+	 * Computes the number of paths matched by the given query.
+	 * This avoids materialising the full result list.
+	 * @param cpq The query to run.
+	 * @return The number of paths matched by the query.
+	 * @throws IllegalArgumentException When the query has a diameter that
+	 *         is larger than the diameter of this index.
+	 * @see #query(CPQ)
+	 */
+	public final long cost(CPQ cpq) throws IllegalArgumentException{
+		if(cpq.getDiameter() < 1){
+			throw new IllegalArgumentException("Query diameter smaller than 1.");
+		}
+		if(cpq.getDiameter() > k){
+			throw new IllegalArgumentException("Query diameter larger than index diameter.");
+		}
+
+		long total = 0L;
+		for(Block block : coreToBlock.getOrDefault(
+			CanonForm.computeCanon(cpq, false).toHashCanon(),
+			Collections.emptyList()
+		)){
+			total += block.getPathCount();
+		}
+		return total;
+	}
 	
 	/**
 	 * Sets the progress listener to send computation updates to.
@@ -768,6 +795,10 @@ public class Index{
 		 */
 		private final List<Pair> paths;
 		/**
+		 * The number of paths stored at this block.
+		 */
+		private final int pathCount;
+		/**
 		 * A list of all label sequences that map to this block. This is
 		 * the same set of label sequences as computed in the original
 		 * paper on language aware indexing. This list may also be set
@@ -809,6 +840,7 @@ public class Index{
 			LabelledPath range = slice.get(0);
 			id = range.getSegmentId();
 			paths = slice.stream().map(LabelledPath::getPair).collect(Collectors.toList());
+			pathCount = paths.size();
 			slice.forEach(s->s.setBlock(this));
 			combinations = range.getSegments().stream().map(BlockPair::new).toList();
 			cores = new ArrayList<CPQ>();
@@ -848,6 +880,7 @@ public class Index{
 			for(int i = 0; i < len; i++){
 				paths.add(new Pair(in));
 			}
+			pathCount = len;
 			
 			if(full){
 				k = in.readInt();
@@ -942,6 +975,14 @@ public class Index{
 		 */
 		public final List<Pair> getPaths(){
 			return paths;
+		}
+
+		/**
+		 * Gets the number of paths stored at this block.
+		 * @return The number of paths for this block.
+		 */
+		public final int getPathCount(){
+			return pathCount;
 		}
 		
 		/**
