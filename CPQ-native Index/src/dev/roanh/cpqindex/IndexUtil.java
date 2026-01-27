@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import dev.roanh.gmark.type.schema.Predicate;
 import dev.roanh.gmark.util.graph.generic.UniqueGraph;
@@ -51,6 +52,20 @@ public class IndexUtil{
 	}
 	
 	/**
+	 * Reads a graph from the given file where each line
+	 * is expected to contain information for a graph edge
+	 * in the format {@code source target label} and only
+	 * keeps edges whose label is in the given allowed set.
+	 * @param file The file to read from.
+	 * @param allowedLabels The allowed label IDs, or null to allow all.
+	 * @return The read graph.
+	 * @throws IOException When an IOException occurs.
+	 */
+	public static UniqueGraph<Integer, Predicate> readGraph(Path file, Set<Integer> allowedLabels) throws IOException{
+		return readGraph(Files.newInputStream(file), allowedLabels);
+	}
+	
+	/**
 	 * Reads a graph from the given plain text input stream
 	 * each line  is expected to contain information for a
 	 * graph edge in the format {@code source target label}
@@ -59,6 +74,20 @@ public class IndexUtil{
 	 * @throws IOException When an IOException occurs.
 	 */
 	public static UniqueGraph<Integer, Predicate> readGraph(InputStream in) throws IOException{
+		return readGraph(in, null);
+	}
+	
+	/**
+	 * Reads a graph from the given plain text input stream
+	 * each line  is expected to contain information for a
+	 * graph edge in the format {@code source target label}
+	 * and only keeps edges whose label is in the given allowed set.
+	 * @param in The input stream to read from (plain text).
+	 * @param allowedLabels The allowed label IDs, or null to allow all.
+	 * @return The read graph.
+	 * @throws IOException When an IOException occurs.
+	 */
+	public static UniqueGraph<Integer, Predicate> readGraph(InputStream in, Set<Integer> allowedLabels) throws IOException{
 		try(BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))){
 			String line = reader.readLine();
 			if(line == null){
@@ -85,6 +114,10 @@ public class IndexUtil{
 				int src = Integer.parseInt(args[0]);
 				int trg = Integer.parseInt(args[1]);
 				int lab = Integer.parseInt(args[2]);
+				
+				if(allowedLabels != null && !allowedLabels.contains(lab)){
+					continue;
+				}
 				
 				if(last == null || last.getID() != src){
 					last = graph.getNode(src);
