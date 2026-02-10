@@ -310,13 +310,14 @@ public class Index{
 	
 	/**
 	 * Runs the given query on this index and returns the result. Note that
-	 * the intersection limit has to be respect if a limit was set.
+	 * the intersection limit has to be respected if a limit was set.
 	 * @param cpq The query to run.
 	 * @return The paths matched by the query.
 	 * @throws IllegalArgumentException When the query has a diameter that
 	 *         is larger than the diameter of this index.
 	 * @see #setIntersections(int)
 	 * @see CPQ#getDiameter()
+	 * @see #computeResultCardinality(CPQ)
 	 */
 	public final List<Pair> query(CPQ cpq) throws IllegalArgumentException{
 		if(cpq.getDiameter() > k){
@@ -332,6 +333,33 @@ public class Index{
 			CanonForm.computeCanon(cpq, false).toHashCanon(),
 			Collections.emptyList()
 		).stream().flatMap(b->b.getPaths().stream()).toList();
+	}
+
+	/**
+	 * Computes the number of paths matched by the given query.
+	 * Note that the intersection limit has to be respected if a limit was set.
+	 * @param cpq The query to compute the number of paths for.
+	 * @return The number of paths matched by the query.
+	 * @throws IllegalArgumentException When the query has a diameter that
+	 *         is larger than the diameter of this index.
+	 * @see #setIntersections(int)
+	 * @see CPQ#getDiameter()
+	 * @see #query(CPQ)
+	 */
+	public final long computeResultCardinality(CPQ cpq) throws IllegalArgumentException{
+		if(cpq.getDiameter() > k){
+			throw new IllegalArgumentException("Query diameter larger than index diameter.");
+		}
+
+		if(cpq.getDiameter() == 0){
+			//we do not store the query of just identity, this could be optimised if required
+			return blocks.stream().filter(Block::isLoop).flatMap(b->b.getPaths().stream()).count();
+		}
+
+		return coreToBlock.getOrDefault(
+			CanonForm.computeCanon(cpq, false).toHashCanon(),
+			Collections.emptyList()
+		).stream().mapToInt(Block::getPathCount).sum();
 	}
 	
 	/**
@@ -959,6 +987,14 @@ public class Index{
 		 */
 		public final List<Pair> getPaths(){
 			return paths;
+		}
+
+		/**
+		 * Gets the number of paths stored at this block.
+		 * @return The number of paths for this block.
+		 */
+		public final int getPathCount(){
+			return paths.size();
 		}
 		
 		/**

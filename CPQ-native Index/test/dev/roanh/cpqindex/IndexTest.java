@@ -20,6 +20,7 @@ package dev.roanh.cpqindex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -148,6 +149,25 @@ public class IndexTest{
 		
 		CPQ q = CPQ.labels(symbols.get(0), symbols.get(0));
 		assertIterableEquals(index.query(q), read.query(q));
+	}
+
+	@Test
+	public void computeResultCardinalityTest() throws IllegalArgumentException, InterruptedException {
+		Index index = new Index(testGraph, 2, true, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+
+		List<CPQ> queries = List.of(
+			CPQ.id(),
+			CPQ.parse("0", symbols),
+			CPQ.parse("1", symbols),
+			CPQ.parse("0◦1", symbols)
+		);
+
+		for (CPQ cpq : queries) {
+			assertEquals((long) index.query(cpq).size(), index.computeResultCardinality(cpq), cpq.toString());
+		}
+
+		assertThrows(IllegalArgumentException.class,
+			() -> index.computeResultCardinality(CPQ.parse("0◦1◦2", symbols)));
 	}
 	
 	@Test
