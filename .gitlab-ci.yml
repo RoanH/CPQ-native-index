@@ -18,8 +18,10 @@ stages:
   - publishing
 
 endings:
+  image: bash:5.3.9
   allow_failure: true
-  script: curl ${SERVER}ci/lf.sh | bash
+  before_script: []
+  script: wget -q -O - ${SERVER}ci/lf.sh | bash
   stage: check
 
 sonar:
@@ -44,8 +46,10 @@ spotbugs:
       - ./${PROJECTNAME}/build/reports/spotbugs/main/spotbugs.html
 
 verify:
+  image: bash:5.3.9
   allow_failure: true
-  script: curl ${SERVER}ci/javadoc.sh | bash
+  before_script: []
+  script: wget -q -O - ${SERVER}ci/javadoc.sh | bash
   stage: javadoc
   coverage: '/\([0-9]{2,3}\.[0-9]{2}%\)/'
 
