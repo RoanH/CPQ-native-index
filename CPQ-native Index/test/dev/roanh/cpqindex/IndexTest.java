@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.cpqindex.Index.Block;
@@ -41,6 +42,7 @@ import dev.roanh.gmark.util.graph.generic.UniqueGraph;
 
 public class IndexTest{
 	private static UniqueGraph<Integer, Predicate> testGraph;
+	private static Index testIndex;
 	private static List<Predicate> symbols = List.of(
 		new Predicate(0, "0"),
 		new Predicate(1, "1"),
@@ -60,7 +62,8 @@ public class IndexTest{
 		
 		try{
 			Main.loadNatives();
-		}catch(UnsatisfiedLinkError | IOException e){
+			testIndex = new Index(testGraph, 2, true, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
+		}catch(UnsatisfiedLinkError | IOException | IllegalArgumentException | InterruptedException e){
 			e.printStackTrace();
 		}
 	}
@@ -150,24 +153,27 @@ public class IndexTest{
 		CPQ q = CPQ.labels(symbols.get(0), symbols.get(0));
 		assertIterableEquals(index.query(q), read.query(q));
 	}
-
+	
 	@Test
-	public void computeResultCardinalityTest() throws IllegalArgumentException, InterruptedException {
-		Index index = new Index(testGraph, 2, true, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
-
-		List<CPQ> queries = List.of(
-			CPQ.id(),
-			CPQ.parse("0", symbols),
-			CPQ.parse("1", symbols),
-			CPQ.parse("0◦1", symbols)
-		);
-
-		for (CPQ cpq : queries) {
-			assertEquals((long) index.query(cpq).size(), index.computeResultCardinality(cpq), cpq.toString());
-		}
-
-		assertThrows(IllegalArgumentException.class,
-			() -> index.computeResultCardinality(CPQ.parse("0◦1◦2", symbols)));
+	public void evaluateQuery() throws IllegalArgumentException{
+		assertIterableEquals(List.of(new Pair(1, 2)), testIndex.query(CPQ.label(symbols.get(1))));
+	}
+	
+	@Test
+	public void evaluateQueryDiameterTooLarge() throws IllegalArgumentException{
+		assertThrows(IllegalArgumentException.class, ()->testIndex.query(CPQ.parse("0◦1◦2", symbols)));
+	}
+	
+	@Test
+	public void evaluateQueryDiameterZero() throws IllegalArgumentException{
+		assertThrows(IllegalArgumentException.class, ()->testIndex.query(CPQ.id()));
+	}
+	
+	@Test
+	@ValueSource(strings = {"0", "1", "0◦1"})
+	public void computeResultCardinality(String query) throws IllegalArgumentException{
+		CPQ cpq = CPQ.parse(query, symbols);
+		assertEquals(testIndex.query(cpq).size(), testIndex.computeResultCardinality(cpq), cpq.toString());
 	}
 	
 	@Test
