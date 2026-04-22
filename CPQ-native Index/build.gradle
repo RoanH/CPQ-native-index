@@ -53,7 +53,7 @@ eclipse.classpath.downloadJavadoc = true
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 jacocoTestReport.reports.xml.required = true
-java.sourceCompatibility = 1.21
+java.sourceCompatibility = 1.25
 javadoc.options.memberLevel = JavadocMemberLevel.PRIVATE
 javadoc.options.encoding = 'UTF-8'
 group = 'dev.roanh.cpqnativeindex'
@@ -145,7 +145,7 @@ publishing{
 
 	repositories{
 		maven{
-			url "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+			url "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
 			credentials{
 				username findProperty("OSSRH_USER")
 				password findProperty("OSSRH_PASS")
