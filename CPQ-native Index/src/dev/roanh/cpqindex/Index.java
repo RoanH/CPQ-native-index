@@ -43,6 +43,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.gmark.lang.cpq.CPQ;
@@ -313,26 +314,14 @@ public class Index{
 	 * the intersection limit has to be respected if a limit was set.
 	 * @param cpq The query to run.
 	 * @return The paths matched by the query.
-	 * @throws IllegalArgumentException When the query has a diameter that
-	 *         is larger than the diameter of this index.
+	 * @throws IllegalArgumentException When the query has a diameter equal
+	 *         to 0 or larger than the diameter of this index.
 	 * @see #setIntersections(int)
 	 * @see CPQ#getDiameter()
 	 * @see #computeResultCardinality(CPQ)
 	 */
 	public final List<Pair> query(CPQ cpq) throws IllegalArgumentException{
-		if(cpq.getDiameter() > k){
-			throw new IllegalArgumentException("Query diameter larger than index diameter.");
-		}
-		
-		if(cpq.getDiameter() == 0){
-			//we do not store the query of just identity, this could be optimised if required
-			return blocks.stream().filter(Block::isLoop).flatMap(b->b.getPaths().stream()).toList();
-		}
-		
-		return coreToBlock.getOrDefault(
-			CanonForm.computeCanon(cpq, false).toHashCanon(),
-			Collections.emptyList()
-		).stream().flatMap(b->b.getPaths().stream()).toList();
+		return streamBlocks(cpq).flatMap(b->b.getPaths().stream()).toList();
 	}
 
 	/**
@@ -340,26 +329,34 @@ public class Index{
 	 * Note that the intersection limit has to be respected if a limit was set.
 	 * @param cpq The query to compute the number of paths for.
 	 * @return The number of paths matched by the query.
-	 * @throws IllegalArgumentException When the query has a diameter that
-	 *         is larger than the diameter of this index.
+	 * @throws IllegalArgumentException When the query has a diameter equal
+	 *         to 0 or larger than the diameter of this index.
 	 * @see #setIntersections(int)
 	 * @see CPQ#getDiameter()
 	 * @see #query(CPQ)
 	 */
 	public final long computeResultCardinality(CPQ cpq) throws IllegalArgumentException{
-		if(cpq.getDiameter() > k){
-			throw new IllegalArgumentException("Query diameter larger than index diameter.");
+		return streamBlocks(cpq).mapToLong(Block::getPathCount).sum();
+	}
+	
+	/**
+	 * Returns a stream over the blocks matched by the given query.
+	 * Note that the intersection limit has to be respected if a limit was set.
+	 * @param cpq The query to find blocks for.
+	 * @return A stream over the blocks matched by the given query.
+	 * @throws IllegalArgumentException When the query has a diameter equal
+	 *         to 0 or larger than the diameter of this index.
+	 * @see #setIntersections(int)
+	 */
+	private final Stream<Block> streamBlocks(CPQ cpq) throws IllegalArgumentException{
+		if(cpq.getDiameter() > k || cpq.getDiameter() == 0){
+			throw new IllegalArgumentException("Query diameter equal to 0 or larger than index diameter.");
 		}
-
-		if(cpq.getDiameter() == 0){
-			//we do not store the query of just identity, this could be optimised if required
-			return blocks.stream().filter(Block::isLoop).flatMap(b->b.getPaths().stream()).count();
-		}
-
+		
 		return coreToBlock.getOrDefault(
 			CanonForm.computeCanon(cpq, false).toHashCanon(),
 			Collections.emptyList()
-		).stream().mapToInt(Block::getPathCount).sum();
+		).stream();
 	}
 	
 	/**
