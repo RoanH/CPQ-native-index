@@ -1,4 +1,4 @@
-image: eclipse-temurin:21
+image: eclipse-temurin:25
 
 variables:
   SUFFIX: ${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}
@@ -69,8 +69,6 @@ docker:
   variables:
     DOCKER_DRIVER: overlay2
     DOCKER_TLS_CERTDIR: ""
-  tags:
-    - docker
   services:
     - docker:dind
   before_script: []
@@ -78,6 +76,8 @@ docker:
     - docker info
     - docker build -t cpq-native-index .
   stage: compile
+  tags:
+    - docker
 
 natives:
   script:
@@ -121,6 +121,20 @@ publish:
   script: ./gradlew -PrefName=${CI_COMMIT_REF_NAME} publishAllPublicationsToMavenRepository
   when: manual
   stage: publishing
+  tags:
+    - maven_central
+  only:
+    - tags
+
+staging:
+  image: bash:5.3.9
+  before_script: []
+  script: 'curl --request POST -H "Authorization: Bearer ${CENTRAL_PORTAL_TOKEN}" https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/dev.roanh.cpqnativeindex'
+  stage: publishing
+  tags:
+    - maven_central
+  needs:
+    - publish
   only:
     - tags
 
@@ -129,8 +143,6 @@ hub:
   variables:
     DOCKER_DRIVER: overlay2
     DOCKER_TLS_CERTDIR: ""
-  tags:
-    - docker
   services:
     - docker:dind
   before_script: []
@@ -143,6 +155,8 @@ hub:
     - docker push roanh/cpq-native-index:${CI_COMMIT_REF_NAME:1}
     - docker push roanh/cpq-native-index:latest
   stage: publishing
+  tags:
+    - docker
   needs:
     - publish
   only:
