@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
@@ -169,7 +170,7 @@ public class IndexTest{
 		assertThrows(IllegalArgumentException.class, ()->testIndex.query(CPQ.id()));
 	}
 	
-	@Test
+	@ParameterizedTest
 	@ValueSource(strings = {"0", "1", "0◦1"})
 	public void computeResultCardinality(String query) throws IllegalArgumentException{
 		CPQ cpq = CPQ.parse(query, symbols);
