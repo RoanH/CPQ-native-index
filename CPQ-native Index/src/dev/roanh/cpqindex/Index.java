@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.gmark.lang.cpq.CPQ;
@@ -214,7 +214,7 @@ public class Index{
 				Block block = new Block(in, full, blockMap);
 				layer.add(block);
 				blockMap.set(block.getId(), block);
-			}			
+			}
 		}
 
 		int len = in.readInt();
@@ -432,7 +432,7 @@ public class Index{
 		progress.mapStart();
 		for(Block block : blocks){
 			for(CoreHash core : block.canonCores){
-				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
+				coreToBlock.computeIfAbsent(core, _->new ArrayList<Block>()).add(block);
 			}
 			
 			if(!computeLabels){

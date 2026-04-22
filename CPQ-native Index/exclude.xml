@@ -31,4 +31,14 @@
     </Or>
   </Match>
   
+  <Match>
+    <!-- Valid, but the Index is not and is not intended to be threadsafe after configuration -->
+    <Bug pattern="AT_STALE_THREAD_WRITE_OF_PRIMITIVE"/>
+    <Class name="dev.roanh.cpqindex.Index"/>
+    <Or>
+      <Field name="computeCores"/>
+      <Field name="maxIntersections"/>
+    </Or>
+  </Match>
+  
 </FindBugsFilter>

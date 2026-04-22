@@ -173,7 +173,7 @@ public class CanonForm{
 		for(Edge edge : graph.getEdges()){
 			deg[edge.getSource().getID()]++;
 			deg[edge.getID()]++;
-			colorMap.computeIfAbsent(edge.getLabel(), k->new LabelData()).idx++;
+			colorMap.computeIfAbsent(edge.getLabel(), _->new LabelData()).idx++;
 		}
 		
 		//pre size arrays
