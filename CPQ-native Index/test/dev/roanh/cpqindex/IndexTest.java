@@ -668,7 +668,7 @@ public class IndexTest{
 	}
 	
 	@SuppressWarnings("unchecked")
-	private List<Entry<List<String>, List<String>>> readGraph(String name) throws IOException, ClassNotFoundException{
+	private static List<Entry<List<String>, List<String>>> readGraph(String name) throws IOException, ClassNotFoundException{
 		try(ObjectInputStream obsout = new ObjectInputStream(ClassLoader.getSystemResourceAsStream(name))){
 			return (List<Entry<List<String>, List<String>>>)obsout.readObject();
 		}
