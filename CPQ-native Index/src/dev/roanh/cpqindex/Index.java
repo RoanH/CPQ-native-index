@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,6 +42,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import dev.roanh.cpqindex.CanonForm.CoreHash;
 import dev.roanh.gmark.lang.cpq.CPQ;
@@ -214,7 +215,7 @@ public class Index{
 				Block block = new Block(in, full, blockMap);
 				layer.add(block);
 				blockMap.set(block.getId(), block);
-			}			
+			}
 		}
 
 		int len = in.readInt();
@@ -244,6 +245,23 @@ public class Index{
 		}
 		
 		maxIntersections = intersections;
+	}
+
+	/**
+	 * Gets the maximum number of same level CPQ intersections allowed.
+	 * Note that this limit does not count intersection with identity.
+	 * @return The maximum number of CPQs in an intersection.
+	 */
+	public final int getIntersections(){
+		return maxIntersections;
+	}
+
+	/**
+	 * Gets the value of k (the CPQ diameter) this index was computed for.
+	 * @return The k value for this index.
+	 */
+	public final int getK(){
+		return k;
 	}
 	
 	/**
@@ -293,28 +311,52 @@ public class Index{
 	
 	/**
 	 * Runs the given query on this index and returns the result. Note that
-	 * the intersection limit has to be respect if a limit was set.
+	 * the intersection limit has to be respected if a limit was set.
 	 * @param cpq The query to run.
 	 * @return The paths matched by the query.
-	 * @throws IllegalArgumentException When the query has a diameter that
-	 *         is larger than the diameter of this index.
+	 * @throws IllegalArgumentException When the query has a diameter equal
+	 *         to 0 or larger than the diameter of this index.
 	 * @see #setIntersections(int)
 	 * @see CPQ#getDiameter()
+	 * @see #computeResultCardinality(CPQ)
 	 */
 	public final List<Pair> query(CPQ cpq) throws IllegalArgumentException{
-		if(cpq.getDiameter() > k){
-			throw new IllegalArgumentException("Query diameter larger than index diameter.");
-		}
-		
-		if(cpq.getDiameter() == 0){
-			//we do not store the query of just identity, this could be optimised if required
-			return blocks.stream().filter(Block::isLoop).flatMap(b->b.getPaths().stream()).toList();
+		return streamBlocks(cpq).flatMap(b->b.getPaths().stream()).toList();
+	}
+
+	/**
+	 * Computes the number of paths matched by the given query.
+	 * Note that the intersection limit has to be respected if a limit was set.
+	 * @param cpq The query to compute the number of paths for.
+	 * @return The number of paths matched by the query.
+	 * @throws IllegalArgumentException When the query has a diameter equal
+	 *         to 0 or larger than the diameter of this index.
+	 * @see #setIntersections(int)
+	 * @see CPQ#getDiameter()
+	 * @see #query(CPQ)
+	 */
+	public final long computeResultCardinality(CPQ cpq) throws IllegalArgumentException{
+		return streamBlocks(cpq).mapToLong(Block::getPathCount).sum();
+	}
+	
+	/**
+	 * Returns a stream over the blocks matched by the given query.
+	 * Note that the intersection limit has to be respected if a limit was set.
+	 * @param cpq The query to find blocks for.
+	 * @return A stream over the blocks matched by the given query.
+	 * @throws IllegalArgumentException When the query has a diameter equal
+	 *         to 0 or larger than the diameter of this index.
+	 * @see #setIntersections(int)
+	 */
+	private final Stream<Block> streamBlocks(CPQ cpq) throws IllegalArgumentException{
+		if(cpq.getDiameter() > k || cpq.getDiameter() == 0){
+			throw new IllegalArgumentException("Query diameter equal to 0 or larger than index diameter.");
 		}
 		
 		return coreToBlock.getOrDefault(
 			CanonForm.computeCanon(cpq, false).toHashCanon(),
 			Collections.emptyList()
-		).stream().flatMap(b->b.getPaths().stream()).toList();
+		).stream();
 	}
 	
 	/**
@@ -415,7 +457,7 @@ public class Index{
 		progress.mapStart();
 		for(Block block : blocks){
 			for(CoreHash core : block.canonCores){
-				coreToBlock.computeIfAbsent(core, k->new ArrayList<Block>()).add(block);
+				coreToBlock.computeIfAbsent(core, _->new ArrayList<Block>()).add(block);
 			}
 			
 			if(!computeLabels){
@@ -972,6 +1014,14 @@ public class Index{
 		 */
 		public final List<Pair> getPaths(){
 			return paths;
+		}
+
+		/**
+		 * Gets the number of paths stored at this block.
+		 * @return The number of paths for this block.
+		 */
+		public final int getPathCount(){
+			return paths.size();
 		}
 		
 		/**

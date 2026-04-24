@@ -322,7 +322,8 @@ public final class LabelledPath{
 			builder.append(seq.toString());
 			builder.append(",");
 		}
-		builder.delete(builder.length() - 1, builder.length());builder.append("},segs={");
+		builder.delete(builder.length() - 1, builder.length());
+		builder.append("},segs={");
 		for(PathPair seq : segs){
 			builder.append(seq.getFirst().segId);
 			builder.append(seq.getSecond().segId);

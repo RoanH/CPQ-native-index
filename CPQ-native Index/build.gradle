@@ -3,11 +3,11 @@ plugins{
 	id 'application'
 	id 'maven-publish'
 	id 'signing'
-	id 'com.gradleup.shadow' version '8.3.5'
-	id 'edu.sc.seis.launch4j' version '3.0.6'
-	id 'com.github.spotbugs' version '6.0.18'
+	id 'com.gradleup.shadow' version '9.3.0'
+	id 'edu.sc.seis.launch4j' version '4.0.0'
+	id 'com.github.spotbugs' version '6.4.8'
 	id 'jacoco'
-	id 'org.sonarqube' version '6.1.0.5360'
+	id 'org.sonarqube' version '7.2.1.6560'
 }
 
 import com.github.spotbugs.snom.Confidence
@@ -26,8 +26,8 @@ sourceSets{
 }
 
 dependencies{
-	implementation 'dev.roanh.gmark:gmark:2.1'
-	implementation 'commons-cli:commons-cli:1.5.0'
+	implementation 'dev.roanh.gmark:gmark:2.2'
+	implementation 'commons-cli:commons-cli:1.9.0'
 	testImplementation("org.junit.jupiter:junit-jupiter:5.12.0")
 	testImplementation("org.junit.platform:junit-platform-launcher")
 }
@@ -37,7 +37,7 @@ repositories{
 	if(project.hasProperty("nexusPublic")){
 		maven{
 			allowInsecureProtocol = true
-			url "$nexusPublic"
+			url = "$nexusPublic"
 		}
 	}
 	mavenCentral()
@@ -53,7 +53,7 @@ eclipse.classpath.downloadJavadoc = true
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 jacocoTestReport.reports.xml.required = true
-sourceCompatibility = 1.21
+java.sourceCompatibility = 1.25
 javadoc.options.memberLevel = JavadocMemberLevel.PRIVATE
 javadoc.options.encoding = 'UTF-8'
 group = 'dev.roanh.cpqnativeindex'
@@ -145,7 +145,7 @@ publishing{
 
 	repositories{
 		maven{
-			url "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+			url "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
 			credentials{
 				username findProperty("OSSRH_USER")
 				password findProperty("OSSRH_PASS")
@@ -156,6 +156,11 @@ publishing{
 
 shadowJar{
 	mergeServiceFiles()
+	duplicatesStrategy = DuplicatesStrategy.FAIL
+	filesMatching(["META-INF/**", "OSGI-INF/**", "*.html"]){
+		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+	}
+
 	into("META-INF/maven/$project.group/$project.artifact"){
 		from{
 			generatePomFileForMavenJavaPublication
@@ -172,7 +177,7 @@ signing{
 launch4j{
 	jarTask = project.tasks.shadowJar
 	mainClassName = application.mainClass
-	jreMinVersion = project.sourceCompatibility.toString()
+	jreMinVersion = project.java.sourceCompatibility.toString()
 	bundledJrePath = "%JAVA_HOME%"
 	outfile = 'Index-v' + project.version + '.exe'
 	fileDescription = "CPQ-native Index"

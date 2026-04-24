@@ -107,7 +107,7 @@ public class Main{
 		int threads = Integer.parseInt(cli.getOptionValue('t', "1"));
 		int intersections = Integer.parseInt(cli.getOptionValue('i', String.valueOf(Integer.MAX_VALUE)));
 		boolean verbose = cli.hasOption('v');
-		String logFile = verbose ? cli.getOptionValue('v', null) : null;
+		String logFile = verbose ? cli.getOptionValue('v') : null;
 		Path output = Paths.get(cli.getOptionValue('o'));
 		boolean full = cli.hasOption('f');
 		

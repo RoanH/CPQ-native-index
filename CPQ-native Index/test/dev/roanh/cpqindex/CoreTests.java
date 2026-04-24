@@ -53,7 +53,6 @@ public class CoreTests{
 			List<Integer> sizeV = new ArrayList<Integer>(1024);
 			List<Callable<Long>> tasks = new ArrayList<Callable<Long>>();
 			
-			
 			for(int i = 0; i < 1024; i++){
 				QueryGraphCPQ q = CPQ.generateRandomCPQ(rules, 4).toQueryGraph();
 				sizeE.add(q.getEdgeCount());
