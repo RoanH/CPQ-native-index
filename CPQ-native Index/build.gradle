@@ -81,12 +81,27 @@ group = 'dev.roanh.cpqnativeindex'
 ext.artifact = 'cpq-native-index'
 
 project(':cli'){
+	apply plugin: 'application'
+	apply plugin: 'com.gradleup.shadow'
+	apply plugin: 'edu.sc.seis.launch4j'
+
 	sourceSets{
 		main.java.srcDirs = ['src']
 	}
 
 	eclipse.project.name = 'Index-CLI'
+	shadowJar.archiveVersion = 'v' + version
+	shadowJar.archiveClassifier = ''
+	shadowJar.archiveBaseName = 'Index'
 	application.mainClass = 'dev.roanh.cpqindex.Main'
+
+	shadowJar{
+		mergeServiceFiles()
+		duplicatesStrategy = DuplicatesStrategy.FAIL
+		filesMatching(["META-INF/**", "OSGI-INF/**", "*.html"]){
+			duplicatesStrategy = DuplicatesStrategy.INCLUDE
+		}
+	}
 
 	launch4j{
 		jarTask = project.tasks.shadowJar
