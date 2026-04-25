@@ -36,7 +36,7 @@ sonar:
 
 spotbugs:
   allow_failure: true
-  script: ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} spotbugsMain
+  script: ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} spotbugsAll
   stage: check
   artifacts:
     name: SpotBugs-${SUFFIX}
@@ -55,8 +55,8 @@ verify:
 
 javadoc:
   script:
-    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} javadoc
-    - mv ./build/docs/javadoc ../
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} javadocAll
+    - mv ./build/javadoc ../
   stage: javadoc
   artifacts:
     name: Javadoc-${SUFFIX}
@@ -89,12 +89,26 @@ natives:
     paths:
       - ${PROJECTNAME}/lib/*nauty.*
 
+cli:
+  script:
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} cli:shadowJar
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} cli:createExe
+    - mv ./cli/build/libs/* ..
+    - mv ./cli/build/launch4j/*.exe ..
+  stage: compile
+  needs:
+    - natives
+  artifacts:
+    name: Index-CLI-${SUFFIX}
+    expire_in: 1 day
+    paths:
+      - Index-*.jar
+      - Index-*.exe
+
 compile:
   script:
-    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :shadowJar
-    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :createExe
-    - mv ./build/libs/* ..
-    - mv ./build/launch4j/*.exe ..
+    - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :jar
+    - mv ./build/libs/*.jar ../CPQ-native Index.jar
   stage: compile
   needs:
     - natives
@@ -102,8 +116,7 @@ compile:
     name: CPQ-native Index-${SUFFIX}
     expire_in: 1 day
     paths:
-      - Index-*.jar
-      - Index-*.exe
+      - CPQ-native Index.jar
 
 test:
   script:
