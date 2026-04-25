@@ -1,5 +1,5 @@
 # CPQ-native Index [![](https://img.shields.io/github/release/RoanH/CPQ-native-index.svg)](https://github.com/RoanH/CPQ-native-index/releases)
-This repository contains the implementation of a CPQ-native Index, which is a language-aware graph database index for Conjunctive Path Queries (CPQ). This is the reference implementation for my Master's Thesis titled [Indexing Conjunctive Path Queries for Accelerated Query Evaluation](https://research.roanh.dev/Indexing%20Conjunctive%20Path%20Queries%20for%20Accelerated%20Query%20Evaluation.pdf). The work presented here is follow-up research to the [CPQ-aware graph database index](https://ieeexplore.ieee.org/document/9835359) proposed by Yuya Sasaki, George Fletcher and Makoto Onizuka. Documentation (javadoc) can be found at: [cpqnativeindex.docs.roanh.dev](https://cpqnativeindex.docs.roanh.dev/) and the most important information is available in my thesis.
+This repository contains the implementation of a CPQ-native Index, which is a language-aware graph database index for Conjunctive Path Queries (CPQ). This is the reference implementation for my Master's Thesis titled [Indexing Conjunctive Path Queries for Accelerated Query Evaluation](https://research.roanh.dev/Indexing%20Conjunctive%20Path%20Queries%20for%20Accelerated%20Query%20Evaluation.pdf). The work presented here is follow-up research to the [CPQ-aware graph database index](https://ieeexplore.ieee.org/document/9835359) proposed by Yuya Sasaki, George Fletcher and Makoto Onizuka. Documentation (javadoc) can be found at: [cpqnativeindex.docs.roanh.dev](https://cpqnativeindex.docs.roanh.dev/) and the most important information is available in my thesis. Most of the core theory and concepts are implemented in [gMark](https://github.com/RoanH/gMark) instead of this repository.
 
 ## Getting Started
 To support a wide variety of of use cases the CPQ-native Index is a available in a number of different formats. 
@@ -42,10 +42,10 @@ java -Xmx1900G -jar Index.jar -d base_index.idx -k 2 -c -t 64 -v discord:log.txt
 Note that `discord:` can be prepended to the log file argument, which will send computation progress updates to the webhook configured in the `DISCORD\_WEBHOOK` variable in the `Main` class of the program. By default no webhook is configured, so configuring this requires compiling from source. For testing, the robots dataset is available in the [CPQ-aware Index repository](https://github.com/yuya-s/CPQ-aware-index/blob/main/data/robots.edge).
 
 ### Executable Download
-The CPQ-native Index is available as a standalone portable executable with a command line interface. This version of the index requires Java 17 or higher to run. Note that the Windows executable release does not offer the same degree of control over the heap size as the Java archive version.
+The CPQ-native Index is available as a standalone portable executable with a command line interface. This version of the index requires Java 25 or higher to run. Note that the Windows executable release does not offer the same degree of control over the heap size as the Java archive version.
 
-- [Windows executable download](https://github.com/RoanH/CPQ-native-index/releases/download/v1.0/Index-v1.0.exe)    
-- [Runnable Java archive (JAR) download](https://github.com/RoanH/CPQ-native-index/releases/download/v1.0/Index-v1.0.jar)
+- [Windows executable download](https://github.com/RoanH/CPQ-native-index/releases/download/v1.1/Index-v1.1.exe)    
+- [Runnable Java archive (JAR) download](https://github.com/RoanH/CPQ-native-index/releases/download/v1.1/Index-v1.1.jar)
 
 All releases: [releases](https://github.com/RoanH/CPQ-native-index/releases)    
 GitHub repository: [RoanH/CPQ-native-index](https://github.com/RoanH/CPQ-native-index)
@@ -75,7 +75,7 @@ repositories{
 }
 
 dependencies{
-	implementation 'dev.roanh.cpqnativeindex:cpq-native-index:1.0'
+	implementation 'dev.roanh.cpqnativeindex:cpq-native-index:1.1'
 }
 ```
 
@@ -84,12 +84,12 @@ dependencies{
 <dependency>
 	<groupId>dev.roanh.cpqnativeindex</groupId>
 	<artifactId>cpq-native-index</artifactId>
-	<version>1.0</version>
+	<version>1.1</version>
 </dependency>
 ```
 
 ## Development of the Index
-This repository contain an [Eclipse](https://www.eclipse.org/) & [Gradle](https://gradle.org/) project with [gMark](https://github.com/RoanH/gMark) and [Apache Commons CLI](https://commons.apache.org/proper/commons-cli/introduction.html) as the only dependencies. In addition, in order to compile the native library a C compiler and CMake are also required. Development work can be done using the Eclipse IDE or using any other Gradle compatible IDE. Unit testing is employed to test core functionality. Continuous integration is used to run checks on the source files, check for regressions using the unit tests, and to generate release publications.
+This repository contain an [Eclipse](https://www.eclipse.org/) & [Gradle](https://gradle.org/) project with [gMark](https://github.com/RoanH/gMark) as the main dependency for most CPQ logic. In addition, in order to compile the native library a C compiler and CMake are also required. Development work can be done using the Eclipse IDE or using any other Gradle compatible IDE. Unit testing is employed to test core functionality. Continuous integration is used to run checks on the source files, check for regressions using the unit tests, and to generate release publications.
 
 Compiling the native library can be done using the following command in the `CPQ-native Index` directory:
 
