@@ -651,10 +651,7 @@ public class Index{
 		RangeList<List<LabelledPath>> segments = new RangeList<List<LabelledPath>>(k, ArrayList::new);
 		Map<Pair, LabelledPath> history = new HashMap<Pair, LabelledPath>();
 		int vertexCount = g.getNodeCount();
-		List<List<List<LabelledPath>>> adjacencyByLayer = new ArrayList<List<List<LabelledPath>>>(k);
-		for(int layer = 0; layer < k; layer++){
-			adjacencyByLayer.add(null);
-		}
+		RangeList<RangeList<List<LabelledPath>>> adjacencyByLayer = new RangeList<RangeList<List<LabelledPath>>>(k);
 		
 		//classes for 1-path-bisimulation
 		Map<Pair, LabelledPath> pathMap = new HashMap<Pair, LabelledPath>();
@@ -688,8 +685,8 @@ public class Index{
 			seg.setSegmentId(id);
 			prev = seg;
 		}
-		progress.partitionEnd(1);
 		adjacencyByLayer.set(0, buildAdjacencyMapping(segOne, vertexCount));
+		progress.partitionEnd(1);
 		
 		//classes for 2-path-bisimulation to k-path-bisimulation
 		for(int i = 1; i < k; i++){
@@ -699,12 +696,12 @@ public class Index{
 			id++;
 			for(int k1 = i - 1; k1 >= 0; k1--){//all combinations to make CPQi
 				int k2 = i - k1 - 1;
-				List<List<LabelledPath>> endMapping = adjacencyByLayer.get(k2);
+				RangeList<List<LabelledPath>> endMapping = adjacencyByLayer.get(k2);
 				
 				progress.partitionCombinationStart(k1 + 1, k2 + 1);
 				for(LabelledPath seg : segments.get(k1)){
 					List<LabelledPath> endMatches = endMapping.get(seg.getTarget());
-					if(endMatches.isEmpty()){
+					if(endMatches == null){
 						continue;
 					}
 					
@@ -748,8 +745,8 @@ public class Index{
 				prev = path;
 			}
 			
-			progress.partitionEnd(i + 1);
 			adjacencyByLayer.set(i, buildAdjacencyMapping(segs, vertexCount));
+			progress.partitionEnd(i + 1);
 		}
 		
 		return segments;
@@ -762,14 +759,17 @@ public class Index{
 	 * @param vertexCount The total number of vertices in the graph.
 	 * @return The adjacency mapping by source vertex.
 	 */
-	private static List<List<LabelledPath>> buildAdjacencyMapping(List<LabelledPath> segments, int vertexCount){
-		List<List<LabelledPath>> adjacency = new ArrayList<List<LabelledPath>>(vertexCount);
-		for(int i = 0; i < vertexCount; i++){
-			adjacency.add(new ArrayList<LabelledPath>());
-		}
-		
+	private static RangeList<List<LabelledPath>> buildAdjacencyMapping(List<LabelledPath> segments, int vertexCount){
+		RangeList<List<LabelledPath>> adjacency = new RangeList<List<LabelledPath>>(vertexCount);
+
 		for(LabelledPath segment : segments){
-			adjacency.get(segment.getSource()).add(segment);
+			List<LabelledPath> adj = adjacency.get(segment.getSource());
+			if(adj == null){
+				adj = new ArrayList<LabelledPath>();
+				adjacency.set(segment.getSource(), adj);
+			}
+			
+			adj.add(segment);
 		}
 		
 		return adjacency;
