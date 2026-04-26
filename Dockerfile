@@ -13,7 +13,6 @@ RUN ./gradlew -PrefName=v$version cli:shadowJar
 
 FROM eclipse-temurin:25
 LABEL maintainer="roan@roanh.dev"
-ARG version
 WORKDIR /Index
 COPY --from=compile /Index/build/libs/*.jar ./Index.jar
 COPY --from=compile /Index/lib/libnauty.so ./lib/libnauty.so
