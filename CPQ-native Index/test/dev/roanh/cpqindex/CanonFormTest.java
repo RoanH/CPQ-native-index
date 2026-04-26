@@ -21,8 +21,6 @@ package dev.roanh.cpqindex;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.IOException;
-
 import org.junit.jupiter.api.Test;
 
 import dev.roanh.gmark.lang.cpq.CPQ;
@@ -30,14 +28,6 @@ import dev.roanh.gmark.type.schema.Predicate;
 
 public class CanonFormTest{
 	
-	static{
-		try{
-			Main.loadNatives();
-		}catch(UnsatisfiedLinkError | IOException e){
-			e.printStackTrace();
-		}
-	}
-
 	@Test
 	public void canon0(){
 		Predicate l1 = new Predicate(0, "a");

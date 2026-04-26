@@ -18,6 +18,7 @@
  */
 package dev.roanh.cpqindex;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -78,6 +79,14 @@ public class Nauty{
 			colors[idx++] = -group[group.length - 1] - 1;
 		}
 		return colors;
+	}
+	
+	static{
+		try{
+			IndexUtil.loadNatives();
+		}catch(IOException e){
+			throw new LinkageError("Failed to extract native librray", e);
+		}
 	}
 	
 	/**

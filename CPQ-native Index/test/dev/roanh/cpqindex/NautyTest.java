@@ -21,7 +21,6 @@ package dev.roanh.cpqindex;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
@@ -37,14 +36,6 @@ public class NautyTest{
 		new int[]{5},
 		new int[]{4}
 	};
-	
-	static{
-		try{
-			Main.loadNatives();
-		}catch(UnsatisfiedLinkError | IOException e){
-			e.printStackTrace();
-		}
-	}
 	
 	@Test
 	public void fullCanon0(){

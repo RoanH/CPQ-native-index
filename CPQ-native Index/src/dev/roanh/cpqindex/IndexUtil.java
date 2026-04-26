@@ -22,15 +22,18 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 
 import dev.roanh.gmark.type.schema.Predicate;
+import dev.roanh.gmark.util.Util;
 import dev.roanh.gmark.util.graph.generic.UniqueGraph;
 import dev.roanh.gmark.util.graph.generic.UniqueGraph.GraphNode;
-import dev.roanh.gmark.util.Util;
 
 /**
  * Collection of some small index utilities.
@@ -95,5 +98,29 @@ public class IndexUtil{
 			
 			return graph;
 		}
+	}
+	
+	/**
+	 * Loads the compiled JNI libraries required for nauty.
+	 * @throws IOException When an IOException occurs.
+	 * @throws UnsatisfiedLinkError When loading a native library fails.
+	 */
+	public static synchronized final void loadNatives() throws IOException, UnsatisfiedLinkError{
+		String libName = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows") ? "libnauty.dll" : "libnauty.so";
+		Path dir = Paths.get("lib");
+		Path lib = dir.resolve(libName);
+		
+		if(Files.notExists(lib)){
+			Files.createDirectories(dir);
+			try(InputStream in = ClassLoader.getSystemResourceAsStream(libName)){
+				try(OutputStream out = Files.newOutputStream(lib)){
+					in.transferTo(out);
+					out.flush();
+				}
+			}
+		}
+
+		System.out.println("Loading native library: " + libName);
+		System.load(lib.toAbsolutePath().toString());
 	}
 }
