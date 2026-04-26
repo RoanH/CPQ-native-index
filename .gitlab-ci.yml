@@ -99,7 +99,7 @@ cli:
   needs:
     - natives
   artifacts:
-    name: Index-CLI-${SUFFIX}
+    name: CPQ-native Index CLI-${SUFFIX}
     expire_in: 1 day
     paths:
       - Index-*.jar
@@ -116,7 +116,7 @@ compile:
     name: CPQ-native Index-${SUFFIX}
     expire_in: 1 day
     paths:
-      - CPQ-native Index.jar
+      - Index.jar
 
 test:
   script:
