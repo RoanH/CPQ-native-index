@@ -62,10 +62,10 @@ public class IndexTest{
 		testGraph.addUniqueEdge(1, 2, symbols.get(1));
 		
 		try{
-			Main.loadNatives();
 			testIndex = new Index(testGraph, 2, true, false, 1, Integer.MAX_VALUE, ProgressListener.NONE);
-		}catch(UnsatisfiedLinkError | IOException | IllegalArgumentException | InterruptedException e){
+		}catch(IllegalArgumentException | InterruptedException e){
 			e.printStackTrace();
+			throw new IllegalStateException(e);
 		}
 	}
 	

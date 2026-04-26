@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Locale;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -70,14 +69,6 @@ public class Main{
 	 */
 	public static void main(String[] args){
 		System.out.println("Running CPQ-native Index version " + VERSION.substring(1));
-		
-		//initialise native bindings
-		try{
-			loadNatives();
-		}catch(IOException | UnsatisfiedLinkError e){
-			e.printStackTrace();
-			return;
-		}
 		
 		CommandLineParser parser = new DefaultParser();
 		try{
@@ -179,30 +170,6 @@ public class Main{
 				return;
 			}
 		}
-	}
-	
-	/**
-	 * Loads the compiled JNI libraries required for nauty.
-	 * @throws IOException When an IOException occurs.
-	 * @throws UnsatisfiedLinkError When loading a native library fails.
-	 */
-	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
-		String libName = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows") ? "libnauty.dll" : "libnauty.so";
-		Path dir = Paths.get("lib");
-		Path lib = dir.resolve(libName);
-		
-		if(Files.notExists(lib)){
-			Files.createDirectories(dir);
-			try(InputStream in = ClassLoader.getSystemResourceAsStream(libName)){
-				try(OutputStream out = Files.newOutputStream(lib)){
-					in.transferTo(out);
-					out.flush();
-				}
-			}
-		}
-
-		System.out.println("Loading native library: " + libName);
-		System.load(lib.toAbsolutePath().toString());
 	}
 	
 	static{
