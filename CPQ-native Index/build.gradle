@@ -222,6 +222,15 @@ allprojects{
 	}
 }
 
+task compileNatives(type: Exec, group: "build", description: "Compile native libraries for the project."){
+	workingDir "$projectDir/native"
+	if(System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')){
+		commandLine 'cmd', '/c', 'build.bat'
+	}else{
+		commandLine 'sh', '-c', './build.sh'
+	}
+}
+
 task javadocAll(type: Javadoc, group: "documentation"){
 	description = 'Generates the combined javadoc for all sub-projects.'
 
