@@ -105,7 +105,7 @@ public class IndexUtil{
 	 * @throws IOException When an IOException occurs.
 	 * @throws UnsatisfiedLinkError When loading a native library fails.
 	 */
-	public static final void loadNatives() throws IOException, UnsatisfiedLinkError{
+	public static synchronized final void loadNatives() throws IOException, UnsatisfiedLinkError{
 		String libName = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows") ? "libnauty.dll" : "libnauty.so";
 		Path dir = Paths.get("lib");
 		Path lib = dir.resolve(libName);
