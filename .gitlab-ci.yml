@@ -108,7 +108,7 @@ cli:
 compile:
   script:
     - ./gradlew -PrefName=${CI_COMMIT_REF_NAME} -PnexusPublic=${NEXUS_PUBLIC} :jar
-    - mv ./build/libs/*.jar ../CPQ-native Index.jar
+    - mv ./build/libs/*.jar ../Index.jar
   stage: compile
   needs:
     - natives
