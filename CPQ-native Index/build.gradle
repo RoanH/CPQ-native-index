@@ -85,13 +85,13 @@ project(':cli'){
 	sourceSets{
 		main.java.srcDirs = ['src']
 	}
-	
+
 	dependencies{
 		implementation project(":")
 		implementation 'commons-cli:commons-cli:1.9.0'
 	}
 
-	eclipse.project.name = 'Index-CLI'
+	eclipse.project.name = 'CPQ-native Index CLI'
 	shadowJar.archiveVersion = 'v' + version
 	shadowJar.archiveClassifier = ''
 	shadowJar.archiveBaseName = 'Index'
@@ -111,7 +111,7 @@ project(':cli'){
 		jreMinVersion = project.java.sourceCompatibility.toString()
 		bundledJrePath = "%JAVA_HOME%"
 		outfile = 'Index-v' + project.version + '.exe'
-		fileDescription = "Index-CLI"
+		fileDescription = "CPQ-native Index CLI"
 		productName = rootProject.name
 		version = project.version
 		textVersion = project.version
