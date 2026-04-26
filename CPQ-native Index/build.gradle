@@ -89,6 +89,7 @@ project(':cli'){
 	dependencies{
 		implementation project(":")
 		implementation 'commons-cli:commons-cli:1.9.0'
+		implementation 'dev.roanh.util:util:2.5'
 	}
 
 	eclipse.project.name = 'CPQ-native Index CLI'

@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -44,6 +45,7 @@ import dev.roanh.gmark.lang.cpq.QueryGraphCPQ.Vertex;
 import dev.roanh.gmark.type.schema.Predicate;
 import dev.roanh.gmark.util.graph.GraphPanel;
 import dev.roanh.gmark.util.graph.generic.UniqueGraph;
+import dev.roanh.util.Util;
 
 /**
  * Main class and CLI interface for the index.
@@ -51,9 +53,9 @@ import dev.roanh.gmark.util.graph.generic.UniqueGraph;
  */
 public class Main{
 	/**
-	 * The current version of the index software.
+	 * The current version of the Index.
 	 */
-	public static final String VERSION = "v1.0";//build.gradle
+	public static final String VERSION = Objects.requireNonNullElse(Util.readArtifactVersion("dev.roanh.cpqnativeindex", "cpq-native-index"), "unknown");
 	/**
 	 * If set this Discord webhook can be used as a logging target.
 	 */
@@ -68,7 +70,7 @@ public class Main{
 	 * @param args The passed CLI options.
 	 */
 	public static void main(String[] args){
-		System.out.println("Running CPQ-native Index version " + VERSION.substring(1));
+		System.out.println("Running CPQ-native Index version " + VERSION);
 		
 		CommandLineParser parser = new DefaultParser();
 		try{
